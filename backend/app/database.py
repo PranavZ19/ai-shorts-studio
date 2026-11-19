@@ -78,3 +78,23 @@ def run_migrations():
                     conn.commit()
                 except Exception:
                     pass
+
+        # Check clips columns
+        res = conn.execute(text("PRAGMA table_info(clips)"))
+        existing_clips = [row[1] for row in res.fetchall()]
+        needed_clips = [
+            ("video_id", "VARCHAR(36)"),
+            ("main_topic", "VARCHAR(255)"),
+            ("hook_summary", "TEXT"),
+            ("target_audience", "VARCHAR(255)"),
+            ("analysis_mode", "VARCHAR(50) DEFAULT 'ollama_llm'"),
+            ("ending_score", "FLOAT DEFAULT 0.0"),
+            ("clarity_score", "FLOAT DEFAULT 0.0")
+        ]
+        for col_name, col_type in needed_clips:
+            if col_name not in existing_clips:
+                try:
+                    conn.execute(text(f"ALTER TABLE clips ADD COLUMN {col_name} {col_type}"))
+                    conn.commit()
+                except Exception:
+                    pass

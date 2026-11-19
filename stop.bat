@@ -15,5 +15,8 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173') do (
     taskkill /f /pid %%a >nul 2>&1
 )
 
+:: Optionally terminate Ollama serve if started by studio
+taskkill /f /im "ollama.exe" >nul 2>&1
+
 echo AI Shorts Studio services stopped cleanly.
 timeout /t 2 /nobreak >nul

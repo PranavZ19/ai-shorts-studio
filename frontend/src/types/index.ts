@@ -89,7 +89,9 @@ export interface SourceVideoItem {
 export interface ClipItem {
   id: string;
   project_id: string;
+  video_id?: string;
   title: string;
+  main_topic?: string;
   start_time: number;
   end_time: number;
   duration: number;
@@ -100,7 +102,12 @@ export interface ClipItem {
   story_score: number;
   information_score: number;
   shareability_score: number;
+  ending_score?: number;
+  clarity_score?: number;
+  hook_summary?: string;
+  target_audience?: string;
   score_explanation?: string;
+  analysis_mode?: string;
   status: string;
   is_approved: boolean;
   thumbnail_url?: string;
@@ -109,6 +116,8 @@ export interface ClipItem {
     titles?: string[];
     descriptions?: string[];
     hashtags?: string[];
+    target_audience?: string;
+    key_takeaways?: string[];
     caption?: string;
     pinned_comment?: string;
     hook_summary?: string;

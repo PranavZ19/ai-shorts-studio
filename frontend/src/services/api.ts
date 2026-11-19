@@ -210,10 +210,50 @@ export const api = {
   },
 
   // Clips
-  async getClips(projectId?: string, approvedOnly = false): Promise<ClipItem[]> {
+  async getClipEngineStatus(): Promise<{
+    ollama_available: boolean;
+    available_models: string[];
+    recommended_model: string;
+    heuristic_fallback_available: boolean;
+  }> {
+    const res = await fetch(`${API_BASE}/clips/status`);
+    if (!res.ok) throw new Error('Failed to fetch clip engine status');
+    return res.json();
+  },
+
+  async analyzeVideoForClips(payload: {
+    video_id: string;
+    target_count?: number;
+    target_duration?: number;
+    min_duration?: number;
+    max_duration?: number;
+    model_name?: string;
+    force_heuristic?: boolean;
+  }): Promise<{
+    success: boolean;
+    video_id: string;
+    video_title: string;
+    clips_found: number;
+    analysis_mode: string;
+    clips: ClipItem[];
+  }> {
+    const res = await fetch(`${API_BASE}/clips/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to analyze video for clips' }));
+      throw new Error(err.detail || 'Failed to analyze video for clips');
+    }
+    return res.json();
+  },
+
+  async getClips(projectId?: string, videoId?: string, approvedOnly = false): Promise<ClipItem[]> {
     let url = `${API_BASE}/clips/`;
     const params = new URLSearchParams();
     if (projectId) params.append('project_id', projectId);
+    if (videoId) params.append('video_id', videoId);
     if (approvedOnly) params.append('approved_only', 'true');
     if (params.toString()) url += `?${params.toString()}`;
 
@@ -240,6 +280,16 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to update clip');
     return res.json();
+  },
+
+  async deleteClip(clipId: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to delete clip' }));
+      throw new Error(err.detail || 'Failed to delete clip');
+    }
   },
 
   // Jobs

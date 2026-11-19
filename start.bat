@@ -16,6 +16,17 @@ if not exist "backend\.venv\Scripts\python.exe" (
     exit /b 1
 )
 
+:: Set Ollama models storage strictly on D: drive
+set "OLLAMA_MODELS=D:\AI-Shorts-Studio\storage\models\ollama"
+if not exist "%OLLAMA_MODELS%" mkdir "%OLLAMA_MODELS%"
+
+:: Check and start Ollama daemon if installed
+set "OLLAMA_EXE=%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
+if exist "%OLLAMA_EXE%" (
+    echo [0/3] Ensuring local Ollama server is running with models on D:...
+    start "AI Shorts Studio - Ollama" /min cmd /c "set OLLAMA_MODELS=D:\AI-Shorts-Studio\storage\models\ollama && "%OLLAMA_EXE%" serve"
+)
+
 :: Kill any old running instances on ports 8000 and 5173
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000') do (
     taskkill /f /pid %%a >nul 2>&1
