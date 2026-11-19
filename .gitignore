@@ -1,0 +1,29 @@
+# Virtual Environment
+backend/.venv/
+.venv/
+env/
+venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.db
+
+# Temporary & Cache
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Storage (stored on D:\AI-Shorts-Studio)
+storage/
+D:/AI-Shorts-Studio/
