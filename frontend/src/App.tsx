@@ -23,6 +23,7 @@ export function App() {
   const [videos, setVideos] = useState<SourceVideoItem[]>([]);
   const [clips, setClips] = useState<ClipItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   const fetchAllData = async () => {
@@ -111,7 +112,11 @@ export function App() {
           )}
 
           {currentTab === 'transcript' && (
-            <TranscriptPage />
+            <TranscriptPage
+              videos={videos}
+              selectedVideoId={selectedVideoId}
+              onSelectVideo={(id) => setSelectedVideoId(id)}
+            />
           )}
 
           {currentTab === 'clip-editor' && (

@@ -171,6 +171,44 @@ export const api = {
     return res.json();
   },
 
+  // Transcripts
+  async getTranscriptForVideo(videoId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/transcripts/video/${videoId}`);
+    if (!res.ok) throw new Error('Failed to fetch transcript');
+    return res.json();
+  },
+
+  async transcribeVideo(videoId: string, modelName = 'base', language = 'auto', forceCpu = false): Promise<any> {
+    const res = await fetch(`${API_BASE}/transcripts/video/${videoId}/transcribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model_name: modelName,
+        language: language,
+        force_cpu: forceCpu
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Transcription failed' }));
+      throw new Error(err.detail || 'Transcription failed');
+    }
+    return res.json();
+  },
+
+  async updateTranscriptSegment(segmentId: string, text: string, speaker?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/transcripts/segments/${segmentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, speaker })
+    });
+    if (!res.ok) throw new Error('Failed to update segment');
+    return res.json();
+  },
+
+  getSubtitleExportUrl(transcriptId: string, format: 'srt' | 'vtt' = 'srt'): string {
+    return `${API_BASE}/transcripts/${transcriptId}/export?format=${format}`;
+  },
+
   // Clips
   async getClips(projectId?: string, approvedOnly = false): Promise<ClipItem[]> {
     let url = `${API_BASE}/clips/`;
