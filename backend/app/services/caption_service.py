@@ -300,4 +300,65 @@ class CaptionService:
 
         return output_srt_path
 
+    @staticmethod
+    def format_vtt_time(seconds: float) -> str:
+        """Format seconds into WebVTT timestamp: HH:MM:SS.mmm"""
+        hrs = int(seconds // 3600)
+        mins = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        millis = int(round((seconds - int(seconds)) * 1000))
+        if millis >= 1000:
+            millis = 999
+        return f"{hrs:02d}:{mins:02d}:{secs:02d}.{millis:03d}"
+
+    def generate_vtt_subtitle(
+        self,
+        words: List[Dict[str, Any]],
+        output_vtt_path: Path,
+        max_words_per_line: int = 5
+    ) -> Path:
+        """Generate standard WebVTT .vtt file for clip download and web player tracks."""
+        output_vtt_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = []
+        cur_line = []
+        for w in words:
+            cur_line.append(w)
+            if len(cur_line) >= max_words_per_line or w["word"].endswith((".", "!", "?", "।")):
+                lines.append(cur_line)
+                cur_line = []
+        if cur_line:
+            lines.append(cur_line)
+
+        vtt_parts = ["WEBVTT\n"]
+        for idx, line_words in enumerate(lines):
+            if not line_words:
+                continue
+            s_time = self.format_vtt_time(line_words[0]["start"])
+            e_time = self.format_vtt_time(line_words[-1]["end"])
+            text = " ".join(w["word"] for w in line_words)
+            vtt_parts.append(f"{idx + 1}\n{s_time} --> {e_time}\n{text}\n")
+
+        with open(output_vtt_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(vtt_parts))
+
+        return output_vtt_path
+
+    @staticmethod
+    def srt_to_vtt(srt_path: Path, output_vtt_path: Path) -> Path:
+        """Convert an existing SRT subtitle file into standard WebVTT format."""
+        if not srt_path.exists():
+            return output_vtt_path
+        with open(srt_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+        
+        # Replace commas in timestamps (00:00:01,234 -> 00:00:01.234)
+        vtt_content = "WEBVTT\n\n" + re.sub(
+            r"(\d{2}:\d{2}:\d{2}),(\d{3}) --> (\d{2}:\d{2}:\d{2}),(\d{3})",
+            r"\1.\2 --> \3.\4",
+            content
+        )
+        with open(output_vtt_path, "w", encoding="utf-8") as f:
+            f.write(vtt_content)
+        return output_vtt_path
+
 caption_service = CaptionService()

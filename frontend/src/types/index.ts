@@ -91,10 +91,16 @@ export interface ClipItem {
   project_id: string;
   video_id?: string;
   title: string;
+  description?: string;
+  tags?: string[];
+  is_favorite?: boolean;
+  source_title?: string;
   main_topic?: string;
   start_time: number;
   end_time: number;
   duration: number;
+  resolution?: string;
+  aspect_ratio?: string;
   overall_score: number;
   hook_score: number;
   emotional_score: number;
@@ -112,8 +118,12 @@ export interface ClipItem {
   is_approved: boolean;
   thumbnail_url?: string;
   video_url?: string;
+  stream_url?: string;
   download_url?: string;
   srt_download_url?: string;
+  vtt_download_url?: string;
+  metadata_download_url?: string;
+  zip_download_url?: string;
   has_rendered_video?: boolean;
   output_path?: string;
   file_size_bytes?: number;
@@ -141,6 +151,8 @@ export interface ClipItem {
     outline_width?: number;
     position_y?: number;
     audio_volume?: number;
+    force_cpu?: boolean;
+    encoder?: string;
     [key: string]: any;
   };
   created_at: string;
@@ -160,18 +172,37 @@ export interface ProcessingJobItem {
   created_at: string;
 }
 
+export interface RecentActivityItem {
+  id: string;
+  type: string;
+  action: string;
+  title: string;
+  description: string;
+  status: string;
+  timestamp: string;
+}
+
 export interface DashboardStats {
   stats: {
     total_projects: number;
+    total_source_videos?: number;
     videos_processed: number;
     total_clips_generated: number;
+    total_rendered_clips?: number;
     approved_clips: number;
+    pending_clips?: number;
+    rejected_clips?: number;
     downloadable_clips: number;
+    failed_renders?: number;
     failed_processing_jobs: number;
     active_queue_count: number;
     storage_used_mb: number;
+    storage_used_gb?: number;
+    total_downloadable_video_bytes?: number;
+    total_downloadable_video_mb?: number;
     storage_root: string;
   };
+  recent_activities?: RecentActivityItem[];
   recent_projects: ProjectItem[];
   recent_clips: ClipItem[];
   recent_jobs: ProcessingJobItem[];

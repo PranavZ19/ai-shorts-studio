@@ -90,6 +90,7 @@ class VideoRenderService:
         output_mp4 = clips_dir / f"{clip_id}.mp4"
         output_thumb = thumbnails_dir / f"{clip_id}.jpg"
         output_srt = clips_dir / f"{clip_id}.srt"
+        output_vtt = clips_dir / f"{clip_id}.vtt"
         temp_ass = temp_dir / f"sub_{clip_id}.ass"
 
         # Configuration options
@@ -146,6 +147,10 @@ class VideoRenderService:
                 caption_service.generate_srt_subtitle(
                     words=clip_words,
                     output_srt_path=output_srt
+                )
+                caption_service.generate_vtt_subtitle(
+                    words=clip_words,
+                    output_vtt_path=output_vtt
                 )
                 has_subtitles = temp_ass.exists() and temp_ass.stat().st_size > 0
 
@@ -219,12 +224,19 @@ class VideoRenderService:
             ])
             return cmd
 
-        # Try NVENC first, fallback to CPU if needed
-        used_encoder = "h264_nvenc"
+        # Try NVENC first, fallback to CPU if needed (or force CPU if requested)
+        force_cpu = bool(edit_config.get("force_cpu", False))
+        encoder_preference = edit_config.get("encoder")
+        if force_cpu or encoder_preference == "libx264":
+            attempts = [False]
+        else:
+            attempts = [True, False]
+
+        used_encoder = "libx264" if (force_cpu or encoder_preference == "libx264") else "h264_nvenc"
         success = False
         error_msg = ""
 
-        for attempt_nvenc in [True, False]:
+        for attempt_nvenc in attempts:
             cmd = build_cmd(use_nvenc=attempt_nvenc)
             used_encoder = "h264_nvenc" if attempt_nvenc else "libx264"
 
@@ -312,6 +324,7 @@ class VideoRenderService:
             "output_path": str(output_mp4),
             "thumbnail_path": str(output_thumb) if output_thumb.exists() else None,
             "srt_path": str(output_srt) if output_srt.exists() else None,
+            "vtt_path": str(output_vtt) if output_vtt.exists() else None,
             "file_size_bytes": out_size,
             "width": out_w,
             "height": out_h,

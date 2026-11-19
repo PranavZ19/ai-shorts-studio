@@ -38,11 +38,22 @@ class ClipStatusUpdate(BaseModel):
 
 class ClipEditConfigUpdate(BaseModel):
     title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_favorite: Optional[bool] = None
     start_time: Optional[float] = None
     end_time: Optional[float] = None
     target_audience: Optional[str] = None
     edit_config: Optional[dict] = None
     ai_metadata: Optional[dict] = None
+
+class BulkApprovalRequest(BaseModel):
+    clip_ids: List[str]
+    is_approved: bool
+
+class BulkDeleteRequest(BaseModel):
+    clip_ids: List[str]
+    delete_media: Optional[bool] = True
 
 class RenderClipRequest(BaseModel):
     start_time: Optional[float] = None
@@ -59,6 +70,8 @@ class RenderClipRequest(BaseModel):
     outline_width: Optional[float] = 4.0
     position_y: Optional[float] = 72.0
     audio_volume: Optional[float] = 1.0
+    force_cpu: Optional[bool] = False
+    encoder: Optional[str] = None
 
 @router.get("/status")
 def get_clip_engine_status():
@@ -191,8 +204,20 @@ def list_clips(
     video_id: Optional[str] = None,
     project_id: Optional[str] = None,
     approved_only: bool = False,
+    status: Optional[str] = None,
+    is_favorite: Optional[bool] = None,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = "score",  # score, date, duration, title, size
+    order: Optional[str] = "desc",
+    limit: Optional[int] = 200,
+    offset: Optional[int] = 0,
     db: Session = Depends(get_db)
 ):
+    """
+    Search, filter, sort, and paginate generated clips.
+    Supports filtering by status (candidate, approved, rejected, exported, error),
+    favorite status, keyword search across title, topics, tags, and hook summaries.
+    """
     query = db.query(Clip)
     if video_id:
         query = query.filter(Clip.video_id == video_id)
@@ -200,8 +225,46 @@ def list_clips(
         query = query.filter(Clip.project_id == project_id)
     if approved_only:
         query = query.filter(Clip.is_approved == True)
-    
-    clips = query.order_by(Clip.overall_score.desc()).all()
+    if status and status != "all":
+        if status == "pending":
+            query = query.filter(Clip.status == "candidate", Clip.is_approved == False)
+        elif status == "completed":
+            query = query.filter(Clip.output_path != None)
+        elif status == "rendering":
+            query = query.filter(Clip.status.in_(["exporting", "running"]))
+        else:
+            query = query.filter(Clip.status == status)
+    if is_favorite is not None:
+        query = query.filter(Clip.is_favorite == is_favorite)
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                Clip.title.ilike(term),
+                Clip.main_topic.ilike(term),
+                Clip.hook_summary.ilike(term),
+                Clip.tags.ilike(term),
+                Clip.description.ilike(term)
+            )
+        )
+
+    # Sorting
+    if sort_by == "date":
+        query = query.order_by(Clip.created_at.asc() if order == "asc" else Clip.created_at.desc())
+    elif sort_by == "duration":
+        query = query.order_by(Clip.duration.asc() if order == "asc" else Clip.duration.desc())
+    elif sort_by == "title":
+        query = query.order_by(Clip.title.asc() if order == "asc" else Clip.title.desc())
+    elif sort_by == "size":
+        query = query.order_by(Clip.file_size_bytes.asc() if order == "asc" else Clip.file_size_bytes.desc())
+    else:
+        query = query.order_by(Clip.overall_score.asc() if order == "asc" else Clip.overall_score.desc())
+
+    if limit:
+        query = query.offset(offset).limit(limit)
+
+    clips = query.all()
     return [_serialize_clip(c) for c in clips]
 
 @router.get("/{clip_id}")
@@ -221,6 +284,52 @@ def toggle_clip_approval(clip_id: str, data: ClipStatusUpdate, db: Session = Dep
     db.commit()
     return {"success": True, "clip_id": c.id, "is_approved": c.is_approved, "status": c.status}
 
+@router.patch("/{clip_id}/favorite")
+def toggle_clip_favorite(clip_id: str, db: Session = Depends(get_db)):
+    c = db.query(Clip).filter(Clip.id == clip_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Clip not found")
+    c.is_favorite = not bool(c.is_favorite)
+    db.commit()
+    return {"success": True, "clip_id": c.id, "is_favorite": c.is_favorite}
+
+@router.post("/bulk/approval")
+def bulk_approve_clips(data: BulkApprovalRequest, db: Session = Depends(get_db)):
+    """Bulk update approval status for selected clips."""
+    clips = db.query(Clip).filter(Clip.id.in_(data.clip_ids)).all()
+    updated_count = 0
+    for c in clips:
+        c.is_approved = data.is_approved
+        c.status = "approved" if data.is_approved else "rejected"
+        updated_count += 1
+    db.commit()
+    return {"success": True, "updated_count": updated_count, "is_approved": data.is_approved}
+
+@router.post("/bulk/delete")
+def bulk_delete_clips(data: BulkDeleteRequest, db: Session = Depends(get_db)):
+    """Bulk delete selected clips with safe file cleanup reporting."""
+    clips = db.query(Clip).filter(Clip.id.in_(data.clip_ids)).all()
+    deleted_count = 0
+    bytes_freed = 0
+    for c in clips:
+        video_render_service.cancel_render(c.id)
+        if data.delete_media:
+            for p_str in [c.output_path, c.thumbnail_path, c.srt_path, c.vtt_path]:
+                if p_str:
+                    p = Path(p_str)
+                    if p.exists():
+                        bytes_freed += p.stat().st_size
+                        p.unlink(missing_ok=True)
+        db.delete(c)
+        deleted_count += 1
+    db.commit()
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "bytes_freed": bytes_freed,
+        "mb_freed": round(bytes_freed / (1024 * 1024), 2)
+    }
+
 @router.put("/{clip_id}")
 def update_clip(clip_id: str, data: ClipEditConfigUpdate, db: Session = Depends(get_db)):
     c = db.query(Clip).filter(Clip.id == clip_id).first()
@@ -228,6 +337,12 @@ def update_clip(clip_id: str, data: ClipEditConfigUpdate, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Clip not found")
     if data.title is not None:
         c.title = data.title.strip()
+    if data.description is not None:
+        c.description = data.description.strip()
+    if data.tags is not None:
+        c.tags = ",".join([t.strip() for t in data.tags if t.strip()])
+    if data.is_favorite is not None:
+        c.is_favorite = data.is_favorite
     if data.target_audience is not None:
         c.target_audience = data.target_audience.strip()
     if data.start_time is not None:
@@ -245,7 +360,11 @@ def update_clip(clip_id: str, data: ClipEditConfigUpdate, db: Session = Depends(
     return {"success": True, "clip_id": c.id, "clip": _serialize_clip(c)}
 
 @router.delete("/{clip_id}")
-def delete_clip(clip_id: str, db: Session = Depends(get_db)):
+def delete_clip(
+    clip_id: str,
+    delete_media: bool = Query(True, description="Whether to also permanently remove media files on disk"),
+    db: Session = Depends(get_db)
+):
     c = db.query(Clip).filter(Clip.id == clip_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Clip not found")
@@ -253,17 +372,23 @@ def delete_clip(clip_id: str, db: Session = Depends(get_db)):
     # Cancel rendering if running
     video_render_service.cancel_render(clip_id)
     
-    # Remove files if exist
-    if c.output_path:
-        Path(c.output_path).unlink(missing_ok=True)
-    if c.thumbnail_path:
-        Path(c.thumbnail_path).unlink(missing_ok=True)
-    if c.srt_path:
-        Path(c.srt_path).unlink(missing_ok=True)
+    bytes_freed = 0
+    if delete_media:
+        for p_str in [c.output_path, c.thumbnail_path, c.srt_path, c.vtt_path]:
+            if p_str:
+                p = Path(p_str)
+                if p.exists():
+                    bytes_freed += p.stat().st_size
+                    p.unlink(missing_ok=True)
 
     db.delete(c)
     db.commit()
-    return {"success": True, "deleted_clip_id": clip_id}
+    return {
+        "success": True,
+        "deleted_clip_id": clip_id,
+        "bytes_freed": bytes_freed,
+        "mb_freed": round(bytes_freed / (1024 * 1024), 2)
+    }
 
 # -------------------------------------------------------------
 # Phase 5 Video Rendering Endpoints
@@ -322,8 +447,12 @@ def _execute_render_task(
                 c.output_path = render_result["output_path"]
                 c.thumbnail_path = render_result["thumbnail_path"]
                 c.srt_path = render_result["srt_path"]
+                if "vtt_path" in render_result and render_result["vtt_path"]:
+                    c.vtt_path = render_result["vtt_path"]
                 c.file_size_bytes = render_result["file_size_bytes"]
                 c.duration = render_result["duration"]
+                c.resolution = f"{render_result.get('width', 1080)}x{render_result.get('height', 1920)}"
+                c.aspect_ratio = edit_config.get("aspect_ratio", "9:16")
                 c.status = "exported"
                 c.edit_config_json = json.dumps(edit_config)
                 db.commit()
@@ -535,15 +664,27 @@ def _serialize_clip(c: Clip) -> Dict[str, Any]:
     has_video = bool(c.output_path and Path(c.output_path).exists())
     has_thumb = bool(c.thumbnail_path and Path(c.thumbnail_path).exists())
 
+    source_title = "Source Video"
+    if c.project:
+        source_title = c.project.name
+
+    tag_list = [t.strip() for t in c.tags.split(",") if t.strip()] if c.tags else []
+
     return {
         "id": c.id,
         "project_id": c.project_id,
         "video_id": c.video_id,
         "title": c.title,
+        "description": c.description or "",
+        "tags": tag_list,
+        "is_favorite": bool(c.is_favorite),
+        "source_title": source_title,
         "main_topic": c.main_topic,
         "start_time": c.start_time,
         "end_time": c.end_time,
         "duration": c.duration,
+        "resolution": c.resolution or "1080x1920",
+        "aspect_ratio": c.aspect_ratio or "9:16",
         "overall_score": c.overall_score,
         "hook_score": c.hook_score,
         "emotional_score": c.emotional_score,
@@ -563,8 +704,12 @@ def _serialize_clip(c: Clip) -> Dict[str, Any]:
         "file_size_bytes": c.file_size_bytes or (Path(c.output_path).stat().st_size if has_video else 0),
         "thumbnail_url": f"/api/downloads/clip/{c.id}/thumbnail" if has_thumb else (f"/media/thumbnails/{c.id}.jpg" if c.thumbnail_path else None),
         "video_url": f"/api/downloads/clip/{c.id}/mp4" if has_video else None,
-        "download_url": f"/api/downloads/clip/{c.id}/mp4" if has_video else None,
+        "stream_url": f"/api/downloads/clip/{c.id}/stream" if has_video else None,
+        "download_url": f"/api/downloads/clip/{c.id}/mp4?download=true" if has_video else None,
         "srt_download_url": f"/api/downloads/clip/{c.id}/srt" if c.srt_path else None,
+        "vtt_download_url": f"/api/downloads/clip/{c.id}/vtt" if (c.vtt_path or c.srt_path) else None,
+        "metadata_download_url": f"/api/downloads/clip/{c.id}/metadata",
+        "zip_download_url": f"/api/downloads/clip/{c.id}/zip" if has_video else None,
         "ai_metadata": ai_meta,
         "edit_config": edit_cfg,
         "created_at": c.created_at.isoformat() if c.created_at else None

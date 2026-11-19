@@ -33,14 +33,20 @@ class Clip(Base):
     analysis_mode = Column(String(50), default="ollama_llm")  # "ollama_llm" or "heuristic_nlp"
     
     # Status & Review
-    status = Column(String(50), default="candidate")  # candidate, approved, rejected, exporting, exported
+    status = Column(String(50), default="candidate")  # candidate, approved, rejected, exporting, exported, error
     is_approved = Column(Boolean, default=False)
+    is_favorite = Column(Boolean, default=False)
+    tags = Column(String(512), nullable=True)  # comma-separated tags e.g. "viral,hook,podcast"
+    description = Column(Text, nullable=True)
     
-    # Rendered Media Paths
+    # Rendered Media Paths & Properties
     output_path = Column(String(1024), nullable=True)
     thumbnail_path = Column(String(1024), nullable=True)
     srt_path = Column(String(1024), nullable=True)
+    vtt_path = Column(String(1024), nullable=True)
     file_size_bytes = Column(Integer, default=0)
+    resolution = Column(String(50), default="1080x1920")
+    aspect_ratio = Column(String(20), default="9:16")
     
     # AI Generated Content (JSON serialized)
     # { titles: [...], descriptions: [...], hashtags: [...], caption: "...", pinned_comment: "..." }

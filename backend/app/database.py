@@ -89,7 +89,13 @@ def run_migrations():
             ("target_audience", "VARCHAR(255)"),
             ("analysis_mode", "VARCHAR(50) DEFAULT 'ollama_llm'"),
             ("ending_score", "FLOAT DEFAULT 0.0"),
-            ("clarity_score", "FLOAT DEFAULT 0.0")
+            ("clarity_score", "FLOAT DEFAULT 0.0"),
+            ("description", "TEXT"),
+            ("tags", "VARCHAR(512)"),
+            ("is_favorite", "BOOLEAN DEFAULT 0"),
+            ("vtt_path", "VARCHAR(1024)"),
+            ("resolution", "VARCHAR(50) DEFAULT '1080x1920'"),
+            ("aspect_ratio", "VARCHAR(20) DEFAULT '9:16'")
         ]
         for col_name, col_type in needed_clips:
             if col_name not in existing_clips:

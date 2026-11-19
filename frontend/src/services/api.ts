@@ -249,12 +249,36 @@ export const api = {
     return res.json();
   },
 
-  async getClips(projectId?: string, videoId?: string, approvedOnly = false): Promise<ClipItem[]> {
+  async getClips(options?: {
+    projectId?: string;
+    videoId?: string;
+    approvedOnly?: boolean;
+    status?: string;
+    search?: string;
+    isFavorite?: boolean;
+    sortBy?: string;
+    order?: string;
+    limit?: number;
+    offset?: number;
+  } | string): Promise<ClipItem[]> {
     let url = `${API_BASE}/clips/`;
     const params = new URLSearchParams();
-    if (projectId) params.append('project_id', projectId);
-    if (videoId) params.append('video_id', videoId);
-    if (approvedOnly) params.append('approved_only', 'true');
+
+    if (typeof options === 'string') {
+      params.append('project_id', options);
+    } else if (options) {
+      if (options.projectId) params.append('project_id', options.projectId);
+      if (options.videoId) params.append('video_id', options.videoId);
+      if (options.approvedOnly) params.append('approved_only', 'true');
+      if (options.status) params.append('status', options.status);
+      if (options.search) params.append('search', options.search);
+      if (options.isFavorite !== undefined) params.append('is_favorite', String(options.isFavorite));
+      if (options.sortBy) params.append('sort_by', options.sortBy);
+      if (options.order) params.append('order', options.order);
+      if (options.limit) params.append('limit', String(options.limit));
+      if (options.offset) params.append('offset', String(options.offset));
+    }
+
     if (params.toString()) url += `?${params.toString()}`;
 
     const res = await fetch(url);
@@ -272,6 +296,34 @@ export const api = {
     return res.json();
   },
 
+  async toggleClipFavorite(clipId: string): Promise<{ success: boolean; clip_id: string; is_favorite: boolean }> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}/favorite`, {
+      method: 'PATCH'
+    });
+    if (!res.ok) throw new Error('Failed to toggle favorite');
+    return res.json();
+  },
+
+  async bulkApproveClips(clipIds: string[], isApproved: boolean): Promise<any> {
+    const res = await fetch(`${API_BASE}/clips/bulk/approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clip_ids: clipIds, is_approved: isApproved })
+    });
+    if (!res.ok) throw new Error('Failed to bulk update approvals');
+    return res.json();
+  },
+
+  async bulkDeleteClips(clipIds: string[], deleteMedia = true): Promise<any> {
+    const res = await fetch(`${API_BASE}/clips/bulk/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clip_ids: clipIds, delete_media: deleteMedia })
+    });
+    if (!res.ok) throw new Error('Failed to bulk delete clips');
+    return res.json();
+  },
+
   async updateClip(clipId: string, payload: any): Promise<any> {
     const res = await fetch(`${API_BASE}/clips/${clipId}`, {
       method: 'PUT',
@@ -282,14 +334,15 @@ export const api = {
     return res.json();
   },
 
-  async deleteClip(clipId: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/clips/${clipId}`, {
+  async deleteClip(clipId: string, deleteMedia = true): Promise<any> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}?delete_media=${deleteMedia}`, {
       method: 'DELETE'
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Failed to delete clip' }));
       throw new Error(err.detail || 'Failed to delete clip');
     }
+    return res.json();
   },
 
   async getCaptionPresets(): Promise<Record<string, any>> {
@@ -359,16 +412,50 @@ export const api = {
   },
 
   // Downloads URL helpers
-  getClipMp4Url(clipId: string) {
-    return `${API_BASE}/downloads/clip/${clipId}/mp4`;
+  getClipMp4Url(clipId: string, download = true) {
+    return `${API_BASE}/downloads/clip/${clipId}/mp4${download ? '?download=true' : ''}`;
+  },
+  getClipStreamUrl(clipId: string) {
+    return `${API_BASE}/downloads/clip/${clipId}/stream`;
   },
   getClipSrtUrl(clipId: string) {
     return `${API_BASE}/downloads/clip/${clipId}/srt`;
   },
-  getClipThumbUrl(clipId: string) {
-    return `${API_BASE}/downloads/clip/${clipId}/thumbnail`;
+  getClipVttUrl(clipId: string) {
+    return `${API_BASE}/downloads/clip/${clipId}/vtt`;
   },
-  getProjectZipUrl(projectId: string) {
-    return `${API_BASE}/downloads/project/${projectId}/zip`;
+  getClipThumbUrl(clipId: string, download = false) {
+    return `${API_BASE}/downloads/clip/${clipId}/thumbnail${download ? '?download=true' : ''}`;
+  },
+  getClipMetadataUrl(clipId: string) {
+    return `${API_BASE}/downloads/clip/${clipId}/metadata`;
+  },
+  getClipZipUrl(clipId: string) {
+    return `${API_BASE}/downloads/clip/${clipId}/zip`;
+  },
+  getBulkZipUrl(clipIds: string[], includeSubs = true, includeThumbs = true) {
+    const ids = clipIds.join(',');
+    return `${API_BASE}/downloads/bulk/zip?clip_ids=${encodeURIComponent(ids)}&include_subtitles=${includeSubs}&include_thumbnails=${includeThumbs}`;
+  },
+  getProjectZipUrl(projectId: string, includeSource = false) {
+    return `${API_BASE}/downloads/project/${projectId}/zip?include_source=${includeSource}`;
+  },
+  async requestBulkZip(payload: {
+    clip_ids: string[];
+    include_subtitles?: boolean;
+    include_thumbnails?: boolean;
+    include_metadata?: boolean;
+    package_name?: string;
+  }): Promise<Blob> {
+    const res = await fetch(`${API_BASE}/downloads/bulk/zip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to generate bulk ZIP' }));
+      throw new Error(err.detail || 'Failed to generate bulk ZIP');
+    }
+    return res.blob();
   }
 };
