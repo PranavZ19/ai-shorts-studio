@@ -292,6 +292,47 @@ export const api = {
     }
   },
 
+  async getCaptionPresets(): Promise<Record<string, any>> {
+    const res = await fetch(`${API_BASE}/clips/presets`);
+    if (!res.ok) throw new Error('Failed to fetch caption presets');
+    return res.json();
+  },
+
+  async renderClip(clipId: string, payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}/render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to start clip rendering' }));
+      throw new Error(err.detail || 'Failed to start clip rendering');
+    }
+    return res.json();
+  },
+
+  async getClipRenderStatus(clipId: string): Promise<{
+    clip_id: string;
+    status: string;
+    stage: string;
+    progress_pct: number;
+    message: string;
+    output_ready: boolean;
+    clip?: ClipItem;
+  }> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}/render-status`);
+    if (!res.ok) throw new Error('Failed to fetch render status');
+    return res.json();
+  },
+
+  async cancelClipRender(clipId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}/cancel-render`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to cancel render');
+    return res.json();
+  },
+
   // Jobs
   async getJobs(projectId?: string): Promise<ProcessingJobItem[]> {
     const url = projectId ? `${API_BASE}/jobs/?project_id=${projectId}` : `${API_BASE}/jobs/`;

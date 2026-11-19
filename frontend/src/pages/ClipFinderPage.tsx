@@ -30,10 +30,11 @@ import { api } from '../services/api';
 interface ClipFinderPageProps {
   clips: ClipItem[];
   onNavigate: (tab: string) => void;
+  onSelectClip?: (id: string) => void;
   onRefresh: () => void;
 }
 
-export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialClips, onNavigate, onRefresh }) => {
+export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialClips, onNavigate, onSelectClip, onRefresh }) => {
   const [videos, setVideos] = useState<SourceVideoItem[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string>('');
   const [clips, setClips] = useState<ClipItem[]>(initialClips);
@@ -766,7 +767,10 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialCl
                 {/* Action Buttons */}
                 <div className="pt-2 border-t border-surface-border space-y-2">
                   <button
-                    onClick={() => onNavigate('clip-editor')}
+                    onClick={() => {
+                      if (onSelectClip && selectedClip) onSelectClip(selectedClip.id);
+                      onNavigate('clip-editor');
+                    }}
                     className="w-full py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md"
                   >
                     <Sliders className="w-3.5 h-3.5" />

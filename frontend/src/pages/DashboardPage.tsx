@@ -287,14 +287,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ stats, hardware, o
                       <span>Duration: {Math.round(c.duration)}s</span>
                       <span>•</span>
                       <span className="text-accent-amber font-semibold">Score: {c.overall_score}/100</span>
+                      {c.output_path && (
+                        <span className="px-1.5 py-0.2 rounded bg-accent-emerald/20 text-accent-emerald text-[10px] font-bold">
+                          Rendered MP4
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => onNavigate('clip-editor')}
-                    className="px-2.5 py-1 rounded bg-surface border border-surface-border text-xs text-gray-200 hover:text-white"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {c.output_path && (
+                      <a
+                        href={`/api/downloads/clip/${c.id}/mp4`}
+                        download
+                        className="px-2.5 py-1 rounded bg-accent-emerald/20 hover:bg-accent-emerald/30 border border-accent-emerald/30 text-accent-emerald text-xs font-semibold flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>MP4</span>
+                      </a>
+                    )}
+                    <button
+                      onClick={() => onNavigate('clip-editor')}
+                      className="px-2.5 py-1 rounded bg-surface border border-surface-border text-xs text-gray-200 hover:text-white"
+                    >
+                      Edit
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -24,6 +24,7 @@ export function App() {
   const [clips, setClips] = useState<ClipItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
   const fetchAllData = async () => {
@@ -106,7 +107,10 @@ export function App() {
           {currentTab === 'clip-finder' && (
             <ClipFinderPage
               clips={clips}
-              onNavigate={setCurrentTab}
+              onNavigate={(tab) => {
+                setCurrentTab(tab);
+              }}
+              onSelectClip={(id) => setSelectedClipId(id)}
               onRefresh={fetchAllData}
             />
           )}
@@ -120,7 +124,14 @@ export function App() {
           )}
 
           {currentTab === 'clip-editor' && (
-            <ClipEditorPage />
+            <ClipEditorPage
+              clips={clips}
+              videos={videos}
+              selectedClipId={selectedClipId}
+              onSelectClip={(id) => setSelectedClipId(id)}
+              onRefresh={fetchAllData}
+              onNavigate={setCurrentTab}
+            />
           )}
 
           {currentTab === 'generated-shorts' && (

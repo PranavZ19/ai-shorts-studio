@@ -112,6 +112,11 @@ export interface ClipItem {
   is_approved: boolean;
   thumbnail_url?: string;
   video_url?: string;
+  download_url?: string;
+  srt_download_url?: string;
+  has_rendered_video?: boolean;
+  output_path?: string;
+  file_size_bytes?: number;
   ai_metadata?: {
     titles?: string[];
     descriptions?: string[];
@@ -123,12 +128,20 @@ export interface ClipItem {
     hook_summary?: string;
   };
   edit_config?: {
+    aspect_ratio?: string;
     crop_mode?: string;
     framing?: string;
+    manual_position?: number;
+    caption_enabled?: boolean;
     caption_preset?: string;
     font_size?: number;
     text_color?: string;
     highlight_color?: string;
+    outline_color?: string;
+    outline_width?: number;
+    position_y?: number;
+    audio_volume?: number;
+    [key: string]: any;
   };
   created_at: string;
 }
