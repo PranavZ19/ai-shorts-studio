@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, run_migrations
 import app.models  # ensure models are registered
 from app.api import (
     hardware_router,
@@ -17,8 +17,9 @@ from app.api import (
     settings_router
 )
 
-# Initialize SQLite database tables
+# Initialize SQLite database tables and migrations
 Base.metadata.create_all(bind=engine)
+run_migrations()
 
 app = FastAPI(
     title=settings.APP_NAME,

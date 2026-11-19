@@ -70,13 +70,19 @@ export interface SourceVideoItem {
   title: string;
   source_type: string;
   source_url?: string;
+  channel_name?: string;
   duration: number;
   width: number;
   height: number;
+  aspect_ratio?: string;
   fps: number;
+  codec?: string;
+  audio_codec?: string;
+  has_audio?: boolean;
   file_size: number;
   status: string;
   thumbnail_url?: string;
+  preview_url?: string;
   created_at: string;
 }
 

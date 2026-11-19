@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, Integer, Float, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, Integer, Float, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,13 +12,17 @@ class SourceVideo(Base):
     title = Column(String(255), nullable=False)
     source_type = Column(String(50), default="upload")  # "upload" or "youtube"
     source_url = Column(String(1024), nullable=True)
+    channel_name = Column(String(255), nullable=True)
     file_path = Column(String(1024), nullable=True)
     file_size_bytes = Column(Integer, default=0)
     duration_seconds = Column(Float, default=0.0)
     width = Column(Integer, default=0)
     height = Column(Integer, default=0)
+    aspect_ratio = Column(String(20), nullable=True)
     fps = Column(Float, default=0.0)
     codec = Column(String(50), nullable=True)
+    audio_codec = Column(String(50), nullable=True)
+    has_audio = Column(Boolean, default=True)
     thumbnail_path = Column(String(1024), nullable=True)
     status = Column(String(50), default="uploaded")  # uploaded, validated, transcribing, ready, error
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -46,10 +46,128 @@ export const api = {
   },
 
   // Videos
-  async getVideos(projectId?: string): Promise<SourceVideoItem[]> {
-    const url = projectId ? `${API_BASE}/videos/?project_id=${projectId}` : `${API_BASE}/videos/`;
-    const res = await fetch(url);
+  async getVideos(projectId?: string, search?: string, sortBy?: string): Promise<SourceVideoItem[]> {
+    const params = new URLSearchParams();
+    if (projectId) params.append('project_id', projectId);
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sort_by', sortBy);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE}/videos/${qs}`);
     if (!res.ok) throw new Error('Failed to fetch videos');
+    return res.json();
+  },
+
+  async getVideo(id: string): Promise<SourceVideoItem> {
+    const res = await fetch(`${API_BASE}/videos/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch video details');
+    return res.json();
+  },
+
+  async deleteVideo(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/videos/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to delete video' }));
+      throw new Error(err.detail || 'Failed to delete video');
+    }
+  },
+
+  // Chunked Upload
+  async uploadChunkedVideo(
+    projectId: string,
+    file: File,
+    onProgress: (percent: number, statusText: string) => void
+  ): Promise<any> {
+    const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunk size
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    onProgress(0, 'Initializing upload session...');
+    const initRes = await fetch(`${API_BASE}/videos/upload/init`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        filename: file.name,
+        total_size: file.size,
+        total_chunks: totalChunks
+      })
+    });
+
+    if (!initRes.ok) {
+      const err = await initRes.json().catch(() => ({ detail: 'Failed to initialize upload' }));
+      throw new Error(err.detail || 'Failed to initialize upload');
+    }
+
+    const { upload_id } = await initRes.json();
+
+    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      const start = chunkIdx * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunkBlob = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append('upload_id', upload_id);
+      formData.append('chunk_index', chunkIdx.toString());
+      formData.append('file', chunkBlob, file.name);
+
+      const pct = Math.round(((chunkIdx + 1) / totalChunks) * 85);
+      onProgress(pct, `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${pct}%)...`);
+
+      const chunkRes = await fetch(`${API_BASE}/videos/upload/chunk`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!chunkRes.ok) {
+        const err = await chunkRes.json().catch(() => ({ detail: `Failed uploading chunk ${chunkIdx}` }));
+        throw new Error(err.detail || `Upload interrupted at chunk ${chunkIdx}`);
+      }
+    }
+
+    onProgress(90, 'Assembling chunks and analyzing video with FFprobe...');
+    const completeRes = await fetch(`${API_BASE}/videos/upload/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ upload_id })
+    });
+
+    if (!completeRes.ok) {
+      const err = await completeRes.json().catch(() => ({ detail: 'Failed finalizing video upload' }));
+      throw new Error(err.detail || 'Failed finalizing video');
+    }
+
+    onProgress(100, 'Video uploaded and analyzed successfully!');
+    return completeRes.json();
+  },
+
+  // YouTube Inspector & Import
+  async inspectYouTube(url: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/videos/youtube/inspect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to inspect YouTube URL' }));
+      throw new Error(err.detail || 'Failed to inspect YouTube URL');
+    }
+    return res.json();
+  },
+
+  async importYouTube(projectId: string, url: string, userAuthorized: boolean): Promise<any> {
+    const res = await fetch(`${API_BASE}/videos/youtube/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        url,
+        user_authorized: userAuthorized
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to import YouTube video' }));
+      throw new Error(err.detail || 'Failed to import YouTube video');
+    }
     return res.json();
   },
 
