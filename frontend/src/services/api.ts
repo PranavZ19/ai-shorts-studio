@@ -457,5 +457,210 @@ export const api = {
       throw new Error(err.detail || 'Failed to generate bulk ZIP');
     }
     return res.blob();
+  },
+
+  // ----------------- CREATOR STRATEGY -----------------
+  async getStrategyProfiles(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/strategy/profiles`);
+    if (!res.ok) throw new Error('Failed to fetch channel profiles');
+    return res.json();
+  },
+
+  async createStrategyProfile(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/profiles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to create channel profile');
+    return res.json();
+  },
+
+  async updateStrategyProfile(id: string, data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/profiles/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update channel profile');
+    return res.json();
+  },
+
+  async deleteStrategyProfile(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/profiles/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete channel profile');
+    return res.json();
+  },
+
+  async getStrategyNiches(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/strategy/niches`);
+    if (!res.ok) throw new Error('Failed to fetch niches');
+    return res.json();
+  },
+
+  async getTrends(niche = 'Technology', region = 'US', forceRefresh = false): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/trends?niche=${encodeURIComponent(niche)}&region=${encodeURIComponent(region)}&force_refresh=${forceRefresh}`);
+    if (!res.ok) throw new Error('Failed to fetch trends');
+    return res.json();
+  },
+
+  async analyzeTrend(topicName: string, niche: string, sourceIndicator = ''): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/trends/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic_name: topicName, niche, source_indicator: sourceIndicator })
+    });
+    if (!res.ok) throw new Error('Failed to analyze trend');
+    return res.json();
+  },
+
+  async getContentIdeas(niche?: string, status?: string, projectId?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (niche) params.append('niche', niche);
+    if (status) params.append('status', status);
+    if (projectId) params.append('project_id', projectId);
+    const res = await fetch(`${API_BASE}/strategy/ideas?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch content ideas');
+    return res.json();
+  },
+
+  async generateContentIdeas(payload: {
+    niche: string;
+    trending_topics?: string[];
+    project_id?: string;
+    count?: number;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/ideas/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to generate content ideas');
+    return res.json();
+  },
+
+  async saveContentIdea(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/ideas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to save content idea');
+    return res.json();
+  },
+
+  async updateContentIdeaStatus(id: string, status: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/ideas/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Failed to update idea status');
+    return res.json();
+  },
+
+  async convertIdeaToProject(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/ideas/${id}/convert-to-project`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to convert idea to project');
+    return res.json();
+  },
+
+  async getScheduleRecommendations(payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/schedule/recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to generate schedule recommendations');
+    return res.json();
+  },
+
+  async commitSchedule(posts: any[]): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/schedule/commit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ posts })
+    });
+    if (!res.ok) throw new Error('Failed to commit schedule');
+    return res.json();
+  },
+
+  async getCalendar(params?: { startDate?: string; endDate?: string; platform?: string; status?: string }): Promise<any[]> {
+    const q = new URLSearchParams();
+    if (params?.startDate) q.append('start_date', params.startDate);
+    if (params?.endDate) q.append('end_date', params.endDate);
+    if (params?.platform) q.append('platform', params.platform);
+    if (params?.status) q.append('status', params.status);
+    const res = await fetch(`${API_BASE}/strategy/calendar?${q.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch calendar');
+    return res.json();
+  },
+
+  async addCalendarPost(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/calendar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to schedule post' }));
+      throw new Error(err.detail || 'Failed to schedule post');
+    }
+    return res.json();
+  },
+
+  async updateCalendarPost(id: string, data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/calendar/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update scheduled post');
+    return res.json();
+  },
+
+  async deleteCalendarPost(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/calendar/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete scheduled post');
+    return res.json();
+  },
+
+  async updatePostStatus(id: string, status: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/calendar/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Failed to update post status');
+    return res.json();
+  },
+
+  async getPerformanceInsights(platform?: string): Promise<any> {
+    const url = platform ? `${API_BASE}/strategy/performance?platform=${platform}` : `${API_BASE}/strategy/performance`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch performance insights');
+    return res.json();
+  },
+
+  async logPerformanceMetric(data: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/performance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to log performance metric');
+    return res.json();
+  },
+
+  async getStrategyOverview(): Promise<any> {
+    const res = await fetch(`${API_BASE}/strategy/overview`);
+    if (!res.ok) throw new Error('Failed to fetch strategy overview');
+    return res.json();
   }
 };

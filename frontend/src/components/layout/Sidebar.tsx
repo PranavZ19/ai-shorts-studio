@@ -13,7 +13,8 @@ import {
   Settings,
   Cpu,
   HardDrive,
-  Zap
+  Zap,
+  TrendingUp
 } from 'lucide-react';
 import { HardwareStatus } from '../../types';
 
@@ -25,7 +26,8 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
-  { id: 'new-project', label: 'New Project', icon: PlusCircle, highlight: true },
+  { id: 'creator-strategy', label: 'Creator Strategy', icon: TrendingUp, highlight: true },
+  { id: 'new-project', label: 'New Project', icon: PlusCircle },
   { id: 'video-library', label: 'Video Library', icon: Film },
   { id: 'clip-finder', label: 'AI Clip Finder', icon: Sparkles },
   { id: 'transcript', label: 'Transcript', icon: FileText },

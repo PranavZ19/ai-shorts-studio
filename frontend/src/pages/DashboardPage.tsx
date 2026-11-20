@@ -15,7 +15,8 @@ import {
   Activity,
   Check,
   X,
-  FileText
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 import { DashboardStats, HardwareStatus } from '../types';
 
@@ -49,6 +50,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ stats, hardware, o
           </div>
 
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => onNavigate('creator-strategy')}
+              className="px-4 py-2.5 rounded-xl bg-surface-lighter hover:bg-surface-border text-brand-300 hover:text-white font-semibold text-sm border border-surface-border flex items-center space-x-2 transition-colors"
+            >
+              <TrendingUp className="w-4 h-4 text-brand-400" />
+              <span>Creator Strategy</span>
+            </button>
             <button
               onClick={() => onNavigate('new-project')}
               className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-accent-purple hover:opacity-95 text-white font-semibold text-sm shadow-lg shadow-brand-500/20 flex items-center space-x-2"

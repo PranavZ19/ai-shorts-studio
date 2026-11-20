@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
+import { CreatorStrategyPage } from './pages/CreatorStrategyPage';
 import { NewProjectPage } from './pages/NewProjectPage';
 import { VideoLibraryPage } from './pages/VideoLibraryPage';
 import { ClipFinderPage } from './pages/ClipFinderPage';
@@ -87,6 +88,13 @@ export function App() {
               stats={dashboardStats}
               hardware={hardware}
               onNavigate={setCurrentTab}
+            />
+          )}
+
+          {currentTab === 'creator-strategy' && (
+            <CreatorStrategyPage
+              onNavigate={setCurrentTab}
+              onSelectClip={(id) => setSelectedClipId(id)}
             />
           )}
 

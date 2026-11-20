@@ -4,6 +4,14 @@ from app.models.transcript import Transcript, TranscriptSegment
 from app.models.clip import Clip
 from app.models.job import ProcessingJob
 from app.models.settings import StudioSetting
+from app.models.strategy import (
+    ChannelProfile,
+    TrendSnapshot,
+    TrendTopic,
+    ContentIdea,
+    ScheduledPost,
+    PostPerformance
+)
 
 __all__ = [
     "Project",
@@ -12,5 +20,11 @@ __all__ = [
     "TranscriptSegment",
     "Clip",
     "ProcessingJob",
-    "StudioSetting"
+    "StudioSetting",
+    "ChannelProfile",
+    "TrendSnapshot",
+    "TrendTopic",
+    "ContentIdea",
+    "ScheduledPost",
+    "PostPerformance"
 ]

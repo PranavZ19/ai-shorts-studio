@@ -207,3 +207,140 @@ export interface DashboardStats {
   recent_clips: ClipItem[];
   recent_jobs: ProcessingJobItem[];
 }
+
+export interface ChannelProfile {
+  id: string;
+  name: string;
+  platform: string;
+  niche: string;
+  target_audience_region: string;
+  timezone: string;
+  preferred_frequency_per_week: number;
+  posting_days: string[];
+  preferred_hours: string[];
+  max_uploads_per_day: number;
+  created_at?: string;
+}
+
+export interface TrendTopicItem {
+  id?: string;
+  snapshot_id?: string;
+  niche: string;
+  topic_name: string;
+  explanation: string;
+  source: string;
+  source_url?: string;
+  region: string;
+  trend_status: 'rising' | 'stable' | 'declining';
+  trend_indicator?: string;
+  opportunity_score: number;
+  why_attention?: string;
+  target_audience?: string;
+  related_keywords: string[];
+  suggested_hashtags: string[];
+  content_angles: string[];
+  suggested_titles: string[];
+  suggested_hooks: string[];
+  video_formats: string[];
+  competition_level: string;
+  created_at?: string;
+}
+
+export interface TrendDataResponse {
+  niche: string;
+  region: string;
+  source: string;
+  fetched_at: string;
+  is_cached: boolean;
+  is_fallback: boolean;
+  observation_window: string;
+  topics: TrendTopicItem[];
+}
+
+export interface ContentIdeaItem {
+  id?: string;
+  project_id?: string;
+  channel_profile_id?: string;
+  niche: string;
+  topic: string;
+  concept: string;
+  suggested_title: string;
+  opening_hook: string;
+  short_description?: string;
+  target_audience?: string;
+  keywords?: string[];
+  hashtags?: string[];
+  recommended_duration_seconds: number;
+  why_create?: string;
+  status: 'suggested' | 'saved' | 'in_production' | 'completed' | 'dismissed';
+  associated_source_video_id?: string;
+  associated_clip_id?: string;
+  created_at?: string;
+}
+
+export interface ScheduledPostItem {
+  id?: string;
+  channel_profile_id?: string;
+  clip_id?: string;
+  content_idea_id?: string;
+  platform: 'youtube_shorts' | 'instagram_reels' | 'tiktok';
+  title: string;
+  topic?: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  timezone: string;
+  priority: 'high' | 'medium' | 'normal';
+  recommendation_reason?: string;
+  status: 'recommended' | 'scheduled' | 'published' | 'skipped' | 'draft';
+  notes?: string;
+  thumbnail_path?: string;
+  duration?: number;
+  created_at?: string;
+}
+
+export interface PerformanceInsights {
+  has_enough_data: boolean;
+  sample_size: number;
+  message: string;
+  best_days: string[];
+  best_hours: string[];
+  optimal_length_range: string;
+  top_topics: Array<{ topic: string; avg_views: number; video_count: number }>;
+  day_averages?: Record<string, { avg_views: number; count: number }>;
+  hour_averages?: Record<string, { avg_views: number; count: number }>;
+  duration_averages?: Record<string, number>;
+}
+
+export interface StrategyOverviewData {
+  active_profile: {
+    name: string;
+    niche: string;
+    platform: string;
+    region: string;
+    frequency_per_week: number;
+  };
+  trends_summary: {
+    source: string;
+    fetched_at?: string;
+    is_fallback: boolean;
+    top_trends: TrendTopicItem[];
+  };
+  ideas_summary: {
+    total_in_pipeline: number;
+    top_ideas: ContentIdeaItem[];
+  };
+  upcoming_schedule: ScheduledPostItem[];
+  content_opportunities: Array<{
+    id: string;
+    title: string;
+    duration: number;
+    score: number;
+    topic?: string;
+  }>;
+  performance_snapshot: {
+    has_enough_data: boolean;
+    best_days: string[];
+    best_hours: string[];
+    optimal_length: string;
+  };
+}
