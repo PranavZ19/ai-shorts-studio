@@ -56,9 +56,13 @@ fi
 # 5. Storage Directory
 echo ""
 echo "[5/7] Checking Storage Root..."
-STORAGE_DIR="storage"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    STORAGE_DIR="$HOME/.ai_shorts_studio/storage"
+else
+    STORAGE_DIR="./storage"
+fi
 mkdir -p "$STORAGE_DIR/source_videos" "$STORAGE_DIR/clips" "$STORAGE_DIR/models" "$STORAGE_DIR/temp" "$STORAGE_DIR/thumbnails" "$STORAGE_DIR/exports"
-echo "  [OK] Storage subdirectories verified in ./$STORAGE_DIR"
+echo "  [OK] Storage subdirectories verified in $STORAGE_DIR"
 
 # 6. Database Check
 echo ""

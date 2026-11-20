@@ -1,6 +1,9 @@
 # AI Shorts Studio — macOS Setup Guide
 
-AI Shorts Studio is cross-platform compatible and runs cleanly on macOS (both Apple Silicon M1/M2/M3/M4 and Intel Macs).
+> [!NOTE]
+> Physical test execution for this release was conducted on Windows 11 with an NVIDIA RTX 3050 GPU. macOS scripts (`start.sh`, `stop.sh`, `health-check.sh`) and path fallbacks have been verified via static code analysis. Runtime execution has not been verified on physical Mac hardware.
+
+AI Shorts Studio is cross-platform compatible and designed to run on macOS (both Apple Silicon M1/M2/M3/M4 and Intel Macs).
 
 ---
 

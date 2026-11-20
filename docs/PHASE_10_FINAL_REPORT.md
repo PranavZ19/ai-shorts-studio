@@ -30,7 +30,7 @@ In Phase 10, the entire application has been polished, hardened, and verified un
 | **No Social OAuth / Auto-Publish** | No YouTube OAuth, Instagram Graph API, or automated posting | Code inspection; all publishing kits export for manual copy | **COMPLIANT** |
 | **Storage Root on Drive D:** | All large files on `D:\AI-Shorts-Studio` | Path verification across settings, ingestion, renders & DB | **COMPLIANT** |
 | **GPU / VRAM Optimization** | Work within 4 GB VRAM on NVIDIA RTX 3050 | NVENC hardware acceleration with CPU fallback; sequential queuing | **COMPLIANT** |
-| **Cross-Platform Readiness** | Windows primary + macOS static compatibility | Unix scripts + font stacks + path fallbacks | **COMPLIANT** |
+| **Cross-Platform Readiness** | Windows primary + macOS static compatibility | Unix scripts + font stacks + path fallbacks (Static audit; physical macOS runtime unverified) | **AUDITED (STATIC)** |
 | **Database Integrity** | SQLite with WAL mode & corruption recovery | `PRAGMA integrity_check;` returned `ok` across all runs | **COMPLIANT** |
 
 ---
@@ -65,7 +65,8 @@ In Phase 10, the entire application has been polished, hardened, and verified un
 ### 3. Multilingual Indic Font Stacks
 - Updated `CaptionService.PRESETS` with a robust cross-platform Indic font stack:
   `Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial Black, Arial`
-- Guarantees seamless rendering of Hindi and Devanagari characters (e.g. conjuncts, matras, and purna viram punctuation) across both Windows and macOS platforms.
+- Verified correct rendering of Hindi and Devanagari characters (e.g. conjuncts, matras, and purna viram punctuation) on Windows using `Nirmala UI` and `Segoe UI`.
+- *Note on macOS*: `Kohinoor Devanagari` and `Arial Unicode MS` are specified statically according to standard Apple font specifications; visual display has not been verified on physical Mac hardware.
 
 ### 4. System Health Checkers & Operational Scripts
 - **`health-check.bat` (Windows)**: Standalone CLI diagnostic verifying Python virtual environment, Node.js, FFmpeg/FFprobe, NVIDIA CUDA GPU, Ollama reachability, Drive D: paths, SQLite database integrity, and available disk space.

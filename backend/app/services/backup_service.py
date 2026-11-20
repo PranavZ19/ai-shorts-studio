@@ -171,12 +171,17 @@ class BackupService:
                 with zf.open("studio.db") as src, open(temp_db_extract, "wb") as dst:
                     shutil.copyfileobj(src, dst)
 
-                conn = sqlite3.connect(str(temp_db_extract))
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA integrity_check;")
-                check_result = cursor.fetchone()
-                conn.close()
-                temp_db_extract.unlink(missing_ok=True)
+                conn = None
+                check_result = None
+                try:
+                    conn = sqlite3.connect(str(temp_db_extract))
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA integrity_check;")
+                    check_result = cursor.fetchone()
+                finally:
+                    if conn:
+                        conn.close()
+                    temp_db_extract.unlink(missing_ok=True)
 
                 if not check_result or check_result[0] != "ok":
                     return {"valid": False, "error": f"Database integrity check failed: {check_result}"}
@@ -193,45 +198,85 @@ class BackupService:
             return {"valid": False, "error": f"Invalid or corrupt zip archive: {e}"}
 
     def restore_backup(self, filename: str) -> Dict[str, Any]:
-        """Restores studio database and media from a validated backup archive."""
+        """Restores studio database and media from a validated backup archive with staging and rollback safety."""
         validation = self.validate_backup(filename)
         if not validation.get("valid"):
             raise ValueError(validation.get("error", "Validation failed"))
 
         backup_path = self.backups_dir / filename
-
-        # 1. Create a safety snapshot of current database
         current_db = settings.DATABASE_PATH
         safety_bak = None
+
+        # 1. Force WAL checkpoint on current DB before making safety snapshot
         if current_db.exists():
+            try:
+                self.db.commit()
+                with engine.connect() as conn:
+                    conn.exec_driver_sql("PRAGMA wal_checkpoint(TRUNCATE);")
+            except Exception as e:
+                logger.warning(f"Pre-restore WAL checkpoint warning: {e}")
+
             safety_bak = settings.STORAGE_DIR / f"studio.db.pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.bak"
             shutil.copy2(current_db, safety_bak)
 
-        # 2. Extract database and media from ZIP
-        try:
-            self.db.commit()
-            self.db.close()
-        except Exception:
-            pass
-
-        # Dispose engine pool so no open handles lock the SQLite file or WAL on Windows
-        try:
-            engine.dispose()
-        except Exception:
-            pass
-
-        # Remove stale WAL and SHM files to ensure restored studio.db is read cleanly
-        wal_file = Path(f"{current_db}-wal")
-        shm_file = Path(f"{current_db}-shm")
-        wal_file.unlink(missing_ok=True)
-        shm_file.unlink(missing_ok=True)
-
+        # 2. Extract and pre-verify replacement DB in an isolated staged temporary location
+        staged_db = settings.TEMP_DIR / f"staged_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
         with zipfile.ZipFile(backup_path, "r") as zf:
-            # Overwrite studio.db
-            with zf.open("studio.db") as src, open(current_db, "wb") as dst:
+            with zf.open("studio.db") as src, open(staged_db, "wb") as dst:
                 shutil.copyfileobj(src, dst)
 
-            # Extract any media folders if present
+        # Pre-verify integrity of the staged DB before touching current_db
+        test_conn = None
+        check_passed = False
+        check_err = None
+        try:
+            test_conn = sqlite3.connect(str(staged_db))
+            cur = test_conn.cursor()
+            cur.execute("PRAGMA integrity_check;")
+            res = cur.fetchone()
+            if res and res[0] == "ok":
+                check_passed = True
+            else:
+                check_err = f"Extracted database failed integrity check: {res}"
+        except Exception as e:
+            check_err = f"Failed to verify extracted database: {e}"
+        finally:
+            if test_conn:
+                test_conn.close()
+
+        if not check_passed:
+            staged_db.unlink(missing_ok=True)
+            raise ValueError(check_err or "Staged database validation failed")
+
+        # 3. Safely replace current_db with staged_db
+        try:
+            try:
+                self.db.close()
+            except Exception:
+                pass
+            engine.dispose()
+
+            # Remove stale WAL and SHM files
+            wal_file = Path(f"{current_db}-wal")
+            shm_file = Path(f"{current_db}-shm")
+            wal_file.unlink(missing_ok=True)
+            shm_file.unlink(missing_ok=True)
+
+            shutil.copy2(staged_db, current_db)
+            staged_db.unlink(missing_ok=True)
+        except Exception as e:
+            # If replacing failed, attempt immediate rollback from safety_bak
+            logger.error(f"Failed to overwrite database during restore: {e}")
+            if safety_bak and safety_bak.exists():
+                try:
+                    shutil.copy2(safety_bak, current_db)
+                except Exception as rollback_err:
+                    logger.critical(f"Rollback failed: {rollback_err}")
+            staged_db.unlink(missing_ok=True)
+            raise RuntimeError(f"Database replacement failed, original database preserved: {e}")
+
+        # 4. Extract any media folders if present
+        with zipfile.ZipFile(backup_path, "r") as zf:
             namelist = zf.namelist()
             for item in namelist:
                 if item.startswith("media/source_videos/"):
@@ -247,7 +292,7 @@ class BackupService:
                     with zf.open(item) as src, open(target, "wb") as dst:
                         shutil.copyfileobj(src, dst)
 
-        # 3. Run migrations on restored database to ensure columns are up-to-date
+        # 5. Run migrations on restored database
         run_migrations()
 
         return {
