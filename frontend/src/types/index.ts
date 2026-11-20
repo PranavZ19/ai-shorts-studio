@@ -443,3 +443,52 @@ export interface PublishingKitDetail {
   updated_at?: string;
 }
 
+export interface StorageStats {
+  storage_root: string;
+  total_studio_bytes: number;
+  total_studio_mb: number;
+  breakdown: {
+    source_videos_bytes: number;
+    clips_bytes: number;
+    models_bytes: number;
+    temp_bytes: number;
+    thumbnails_bytes: number;
+    exports_bytes: number;
+    database_bytes: number;
+  };
+  disk: {
+    total_gb: number;
+    free_gb: number;
+    used_percent: number;
+  };
+  is_low_space_warning: boolean;
+}
+
+export interface BackupItem {
+  filename: string;
+  filepath: string;
+  file_size_bytes: number;
+  created_at: string;
+  include_media: boolean;
+  notes?: string;
+  stats: {
+    projects?: number;
+    source_videos?: number;
+    clips?: number;
+    publishing_kits?: number;
+    channel_profiles?: number;
+    scheduled_posts?: number;
+  };
+}
+
+export interface BackupValidationResult {
+  valid: boolean;
+  filename?: string;
+  created_at?: string;
+  stats?: Record<string, any>;
+  include_media?: boolean;
+  app_version?: string;
+  error?: string;
+}
+
+

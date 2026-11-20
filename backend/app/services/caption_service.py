@@ -8,7 +8,7 @@ class CaptionService:
     PRESETS = {
         "bold_creator": {
             "name": "Bold Creator",
-            "font_name": "Segoe UI, Nirmala UI, Arial Black, Arial",
+            "font_name": "Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial Black, Arial",
             "font_size": 28,
             "bold": True,
             "text_color": "#FFFFFF",
@@ -22,7 +22,7 @@ class CaptionService:
         },
         "karaoke_highlight": {
             "name": "Karaoke Highlight",
-            "font_name": "Segoe UI, Nirmala UI, Arial",
+            "font_name": "Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial",
             "font_size": 26,
             "bold": True,
             "text_color": "#E0E0E0",
@@ -36,7 +36,7 @@ class CaptionService:
         },
         "clean_minimal": {
             "name": "Clean Minimal",
-            "font_name": "Segoe UI, Nirmala UI, Arial",
+            "font_name": "Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial",
             "font_size": 24,
             "bold": False,
             "text_color": "#FFFFFF",
@@ -50,7 +50,7 @@ class CaptionService:
         },
         "podcast_style": {
             "name": "Podcast Style",
-            "font_name": "Segoe UI, Nirmala UI, Arial",
+            "font_name": "Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial",
             "font_size": 25,
             "bold": True,
             "text_color": "#FFFFFF",
@@ -64,7 +64,7 @@ class CaptionService:
         },
         "minimal_subtitle": {
             "name": "Minimal Subtitle",
-            "font_name": "Segoe UI, Nirmala UI, Arial",
+            "font_name": "Segoe UI, Nirmala UI, Kohinoor Devanagari, Arial Unicode MS, Arial",
             "font_size": 22,
             "bold": False,
             "text_color": "#FFFFFF",
@@ -80,6 +80,11 @@ class CaptionService:
 
     def __init__(self):
         pass
+
+    @classmethod
+    def get_presets(cls) -> Dict[str, Any]:
+        """Return copy of available caption styling presets."""
+        return cls.PRESETS.copy()
 
     @staticmethod
     def hex_to_ass_color(hex_str: str, alpha: int = 0) -> str:

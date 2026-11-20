@@ -6,7 +6,10 @@ import {
   ClipItem,
   ProcessingJobItem,
   PublishingKitListItem,
-  PublishingKitDetail
+  PublishingKitDetail,
+  StorageStats,
+  BackupItem,
+  BackupValidationResult
 } from '../types';
 
 const API_BASE = '/api';
@@ -788,5 +791,76 @@ export const api = {
 
   getPublishingKitExportUrl(kitId: string, format: 'txt' | 'json' | 'zip'): string {
     return `${API_BASE}/publishing-kits/${kitId}/export?format=${format}`;
+  },
+
+  // Storage Diagnostics & Cleanup (Phase 10)
+  async getStorageStats(): Promise<StorageStats> {
+    const res = await fetch(`${API_BASE}/settings/storage-stats`);
+    if (!res.ok) throw new Error('Failed to fetch storage statistics');
+    return res.json();
+  },
+
+  async cleanupTempFiles(): Promise<{
+    success: boolean;
+    freed_bytes: number;
+    freed_mb: number;
+    cleaned_count: number;
+    message: string;
+  }> {
+    const res = await fetch(`${API_BASE}/settings/cleanup-temp`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to clean temporary files');
+    return res.json();
+  },
+
+  // Backup & Restore (Phase 10)
+  async createBackup(includeMedia: boolean = false, notes?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings/backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ include_media: includeMedia, notes })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to create backup' }));
+      throw new Error(err.detail || 'Failed to create backup');
+    }
+    return res.json();
+  },
+
+  async getBackups(): Promise<BackupItem[]> {
+    const res = await fetch(`${API_BASE}/settings/backups`);
+    if (!res.ok) throw new Error('Failed to list backups');
+    return res.json();
+  },
+
+  async validateBackup(filename: string): Promise<BackupValidationResult> {
+    const res = await fetch(`${API_BASE}/settings/validate-backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Backup validation failed' }));
+      throw new Error(err.detail || 'Backup validation failed');
+    }
+    return res.json();
+  },
+
+  async restoreBackup(filename: string, confirm: boolean = true): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, confirm })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Backup restoration failed' }));
+      throw new Error(err.detail || 'Backup restoration failed');
+    }
+    return res.json();
+  },
+
+  getBackupDownloadUrl(filename: string): string {
+    return `${API_BASE}/settings/backups/${encodeURIComponent(filename)}/download`;
   }
 };

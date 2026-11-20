@@ -16,9 +16,18 @@ if not exist "backend\.venv\Scripts\python.exe" (
     exit /b 1
 )
 
+:: Ensure isolated storage directories exist on D: drive
+if not exist "D:\AI-Shorts-Studio\storage" mkdir "D:\AI-Shorts-Studio\storage"
+if not exist "D:\AI-Shorts-Studio\storage\source_videos" mkdir "D:\AI-Shorts-Studio\storage\source_videos"
+if not exist "D:\AI-Shorts-Studio\storage\clips" mkdir "D:\AI-Shorts-Studio\storage\clips"
+if not exist "D:\AI-Shorts-Studio\storage\models" mkdir "D:\AI-Shorts-Studio\storage\models"
+if not exist "D:\AI-Shorts-Studio\storage\models\ollama" mkdir "D:\AI-Shorts-Studio\storage\models\ollama"
+if not exist "D:\AI-Shorts-Studio\storage\temp" mkdir "D:\AI-Shorts-Studio\storage\temp"
+if not exist "D:\AI-Shorts-Studio\storage\thumbnails" mkdir "D:\AI-Shorts-Studio\storage\thumbnails"
+if not exist "D:\AI-Shorts-Studio\storage\exports\backups" mkdir "D:\AI-Shorts-Studio\storage\exports\backups"
+
 :: Set Ollama models storage strictly on D: drive
 set "OLLAMA_MODELS=D:\AI-Shorts-Studio\storage\models\ollama"
-if not exist "%OLLAMA_MODELS%" mkdir "%OLLAMA_MODELS%"
 
 :: Check and start Ollama daemon if installed
 set "OLLAMA_EXE=%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
