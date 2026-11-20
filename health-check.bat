@@ -39,8 +39,9 @@ echo.
 echo [3/8] Checking FFmpeg and FFprobe...
 where ffmpeg >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    for /f "tokens=*" %%v in ('ffmpeg -version ^| findstr "ffmpeg version"') do set "FFMPEG_VER=%%v"
-    echo   [OK] FFmpeg found: !FFMPEG_VER!
+    for /f "tokens=1,2,3" %%a in ('ffmpeg -version 2^>nul') do (
+        if "%%a"=="ffmpeg" if "%%b"=="version" echo   [OK] FFmpeg found: %%a %%b %%c
+    )
 ) else (
     echo   [FAIL] FFmpeg not found in PATH! Video rendering requires FFmpeg.
     set "OVERALL_STATUS=FAILED"
@@ -58,12 +59,13 @@ echo.
 echo [4/8] Checking NVIDIA GPU and CUDA Acceleration...
 where nvidia-smi >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    for /f "tokens=*" %%g in ('nvidia-smi --query-gpu^=gpu_name^,driver_version --format^=csv^,noheader 2^>nul') do set "GPU_INFO=%%g"
-    echo   [OK] NVIDIA GPU detected: !GPU_INFO!
-    echo   [OK] Hardware acceleration (NVENC + PyTorch CUDA) is available.
+    for /f "delims=" %%g in ('nvidia-smi "--query-gpu=name,driver_version" "--format=csv,noheader"') do (
+        echo   [OK] NVIDIA GPU detected: %%g
+    )
+    echo   [OK] Hardware acceleration with NVENC and PyTorch CUDA is available.
 ) else (
-    echo   [WARN] NVIDIA GPU not detected (nvidia-smi unavailable).
-    echo          Studio will run in CPU fallback mode (libx264 + CPU Whisper).
+    echo   [WARN] NVIDIA GPU not detected - nvidia-smi unavailable.
+    echo          Studio will run in CPU fallback mode with libx264 and CPU Whisper.
 )
 
 :: 5. Check Local Ollama Engine
@@ -86,7 +88,7 @@ if %ERRORLEVEL% equ 0 (
 
 :: 6. Check Storage Root on Drive D:
 echo.
-echo [6/8] Checking Isolated Storage Root (D:\AI-Shorts-Studio)...
+echo [6/8] Checking Isolated Storage Root: D:\AI-Shorts-Studio...
 if exist "D:\AI-Shorts-Studio\storage" (
     echo   [OK] Storage directory exists: D:\AI-Shorts-Studio\storage
     if not exist "D:\AI-Shorts-Studio\storage\source_videos" mkdir "D:\AI-Shorts-Studio\storage\source_videos"
@@ -95,7 +97,7 @@ if exist "D:\AI-Shorts-Studio\storage" (
     if not exist "D:\AI-Shorts-Studio\storage\temp" mkdir "D:\AI-Shorts-Studio\storage\temp"
     if not exist "D:\AI-Shorts-Studio\storage\thumbnails" mkdir "D:\AI-Shorts-Studio\storage\thumbnails"
     if not exist "D:\AI-Shorts-Studio\storage\exports" mkdir "D:\AI-Shorts-Studio\storage\exports"
-    echo   [OK] Storage subdirectories verified (source_videos, clips, models, temp, thumbnails, exports).
+    echo   [OK] Storage subdirectories verified: source_videos, clips, models, temp, thumbnails, exports.
 ) else (
     echo   [WARN] D:\AI-Shorts-Studio\storage directory does not exist yet.
     echo          Creating D:\AI-Shorts-Studio\storage...
@@ -105,17 +107,18 @@ if exist "D:\AI-Shorts-Studio\storage" (
 :: 7. Check SQLite Database & Run Integrity Check
 echo.
 echo [7/8] Checking SQLite Studio Database Integrity...
-if exist "D:\AI-Shorts-Studio\storage\studio.db" (
-    echo   [OK] Studio database exists: D:\AI-Shorts-Studio\storage\studio.db
-    backend\.venv\Scripts\python.exe -c "import sqlite3; conn = sqlite3.connect('D:/AI-Shorts-Studio/storage/studio.db'); cur = conn.cursor(); cur.execute('PRAGMA integrity_check;'); res = cur.fetchone(); print('  [OK] PRAGMA integrity_check:', res[0]); conn.close()" 2>nul
-) else (
+if not exist "D:\AI-Shorts-Studio\storage\studio.db" (
     echo   [WARN] studio.db not found yet. It will be initialized on first run.
+    goto :check_space
 )
+echo   [OK] Studio database exists: D:\AI-Shorts-Studio\storage\studio.db
+backend\.venv\Scripts\python.exe -c "import sqlite3; conn = sqlite3.connect('D:/AI-Shorts-Studio/storage/studio.db'); cur = conn.cursor(); cur.execute('PRAGMA integrity_check;'); print('  [OK] PRAGMA integrity_check:', cur.fetchone()[0]); conn.close()" 2>nul
 
+:check_space
 :: 8. Check Drive D: Available Space
 echo.
 echo [8/8] Checking Storage Drive Free Space...
-backend\.venv\Scripts\python.exe -c "import shutil; total, used, free = shutil.disk_usage('D:/AI-Shorts-Studio' if __import__('os').path.exists('D:/AI-Shorts-Studio') else 'C:/'); print(f'  Disk Total: {total / (1024**3):.1f} GB | Free: {free / (1024**3):.1f} GB'); print('  [OK] Sufficient disk space available.' if free > 5*1024**3 else '  [WARN] Low disk space! Less than 5 GB free.')" 2>nul
+backend\.venv\Scripts\python.exe -c "import shutil, os; p = 'D:/AI-Shorts-Studio' if os.path.exists('D:/AI-Shorts-Studio') else 'C:/'; total, used, free = shutil.disk_usage(p); print(f'  Disk Total: {total / (1024**3):.1f} GB | Free: {free / (1024**3):.1f} GB'); print('  [OK] Sufficient disk space available.' if free > 5*1024**3 else '  [WARN] Low disk space! Less than 5 GB free.')" 2>nul
 
 echo.
 echo ===============================================================================

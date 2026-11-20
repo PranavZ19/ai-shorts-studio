@@ -83,6 +83,7 @@ app.include_router(settings_router)
 app.include_router(strategy_router)
 app.include_router(publishing_kits_router)
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {

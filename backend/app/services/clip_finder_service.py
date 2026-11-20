@@ -187,6 +187,11 @@ class ClipFinderService:
             r"\b(vajah|kyunki|hua kya|asliyat|bhed|chupa)\b"
         ]
 
+        # Adjust min_duration if entire transcript is shorter than configured min_duration
+        total_transcript_dur = max(1.0, segments[-1]["end_time"] - segments[0]["start_time"])
+        effective_min_duration = min(min_duration, max(2.0, total_transcript_dur * 0.7))
+        effective_target_duration = min(target_duration, total_transcript_dur)
+
         # Break transcript into rolling candidates of target duration
         candidates = []
         n_segs = len(segments)
@@ -201,8 +206,8 @@ class ClipFinderService:
             for j in range(i, n_segs):
                 window_segs.append(segments[j])
                 dur = segments[j]["end_time"] - cur_start
-                if dur >= min_duration:
-                    if dur >= target_duration or j == n_segs - 1 or (dur + (segments[j+1]["end_time"] - segments[j]["end_time"])) > max_duration:
+                if dur >= effective_min_duration:
+                    if dur >= effective_target_duration or j == n_segs - 1 or (dur + (segments[j+1]["end_time"] - segments[j]["end_time"])) > max_duration:
                         break
 
             if not window_segs:
@@ -213,7 +218,7 @@ class ClipFinderService:
             raw_end = window_segs[-1]["end_time"]
             raw_dur = raw_end - raw_start
 
-            if raw_dur < min_duration or raw_dur > max_duration + 10:
+            if raw_dur < effective_min_duration or raw_dur > max_duration + 10:
                 continue
 
             # Snap cleanly to words
@@ -367,6 +372,51 @@ class ClipFinderService:
                         f"Core discussion revolves around {main_topic}",
                         f"Opening statement immediately establishes curiosity",
                         f"Self-contained takeaway suitable for social sharing"
+                    ]
+                }
+            })
+
+        if not candidates and segments:
+            # Fallback candidate spanning the available transcript
+            snapped_start = segments[0]["start_time"]
+            snapped_end = segments[-1]["end_time"]
+            final_dur = max(1.0, snapped_end - snapped_start)
+            window_text = " ".join(s.get("text", "").strip() for s in segments)
+            main_topic = "Video Highlights"
+            candidates.append({
+                "title": f"Key Takeaway: {window_text[:40]}...",
+                "main_topic": main_topic,
+                "start_time": snapped_start,
+                "end_time": snapped_end,
+                "duration": round(final_dur, 2),
+                "overall_score": 75.0,
+                "hook_score": 75.0,
+                "emotional_score": 70.0,
+                "curiosity_score": 75.0,
+                "story_score": 70.0,
+                "information_score": 75.0,
+                "shareability_score": 75.0,
+                "ending_score": 70.0,
+                "clarity_score": 80.0,
+                "hook_summary": window_text[:120] if window_text else "Opening statement",
+                "target_audience": "General Social Media Viewers",
+                "score_explanation": "Self-contained clip candidate spanning full speech audio.",
+                "analysis_mode": "heuristic_fallback",
+                "ai_metadata": {
+                    "titles": [
+                        f"{window_text[:45]}...",
+                        "Essential Takeaway You Need to Hear",
+                        "The Complete Breakdown in Under 60 Seconds"
+                    ],
+                    "descriptions": [
+                        f"Watch the full moment: {window_text[:120]}... #Shorts #Reels",
+                        f"Key discussion highlights: {window_text[:120]}... Let us know what you think!"
+                    ],
+                    "hashtags": ["#Shorts", "#Reels", "#Viral", "#Insight", "#Trending"],
+                    "target_audience": "General audience",
+                    "key_takeaways": [
+                        "Self-contained message from video",
+                        "Key discussion point highlighted"
                     ]
                 }
             })
