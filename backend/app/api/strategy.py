@@ -34,6 +34,13 @@ class ChannelProfileCreate(BaseModel):
     posting_days_csv: Optional[str] = "mon,tue,wed,thu,fri"
     preferred_hours_csv: Optional[str] = "12:00,15:00,18:00,20:00"
     max_uploads_per_day: Optional[int] = 2
+    brand_voice: Optional[str] = "energetic"
+    content_language: Optional[str] = "English"
+    target_audience_level: Optional[str] = "general"
+    default_cta: Optional[str] = None
+    creator_name: Optional[str] = None
+    creator_bio: Optional[str] = None
+    creator_links_json: Optional[str] = "[]"
 
 class ChannelProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -45,6 +52,13 @@ class ChannelProfileUpdate(BaseModel):
     posting_days_csv: Optional[str] = None
     preferred_hours_csv: Optional[str] = None
     max_uploads_per_day: Optional[int] = None
+    brand_voice: Optional[str] = None
+    content_language: Optional[str] = None
+    target_audience_level: Optional[str] = None
+    default_cta: Optional[str] = None
+    creator_name: Optional[str] = None
+    creator_bio: Optional[str] = None
+    creator_links_json: Optional[str] = None
 
 class TrendAnalysisRequest(BaseModel):
     topic_name: str
@@ -168,6 +182,13 @@ def get_channel_profiles(db: Session = Depends(get_db)):
         "posting_days": [d.strip() for d in (p.posting_days_csv or "").split(",") if d.strip()],
         "preferred_hours": [h.strip() for h in (p.preferred_hours_csv or "").split(",") if h.strip()],
         "max_uploads_per_day": p.max_uploads_per_day,
+        "brand_voice": p.brand_voice or "energetic",
+        "content_language": p.content_language or "English",
+        "target_audience_level": p.target_audience_level or "general",
+        "default_cta": p.default_cta,
+        "creator_name": p.creator_name,
+        "creator_bio": p.creator_bio,
+        "creator_links_json": p.creator_links_json or "[]",
         "created_at": p.created_at.isoformat() if p.created_at else None
     } for p in profiles]
 
@@ -183,7 +204,14 @@ def create_channel_profile(data: ChannelProfileCreate, db: Session = Depends(get
         preferred_frequency_per_week=data.preferred_frequency_per_week,
         posting_days_csv=data.posting_days_csv,
         preferred_hours_csv=data.preferred_hours_csv,
-        max_uploads_per_day=data.max_uploads_per_day
+        max_uploads_per_day=data.max_uploads_per_day,
+        brand_voice=data.brand_voice or "energetic",
+        content_language=data.content_language or "English",
+        target_audience_level=data.target_audience_level or "general",
+        default_cta=data.default_cta,
+        creator_name=data.creator_name,
+        creator_bio=data.creator_bio,
+        creator_links_json=data.creator_links_json or "[]"
     )
     db.add(profile)
     db.commit()

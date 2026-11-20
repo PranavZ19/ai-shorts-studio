@@ -1,4 +1,13 @@
-import { HardwareStatus, DashboardStats, ProjectItem, SourceVideoItem, ClipItem, ProcessingJobItem } from '../types';
+import {
+  HardwareStatus,
+  DashboardStats,
+  ProjectItem,
+  SourceVideoItem,
+  ClipItem,
+  ProcessingJobItem,
+  PublishingKitListItem,
+  PublishingKitDetail
+} from '../types';
 
 const API_BASE = '/api';
 
@@ -665,5 +674,119 @@ export const api = {
     const res = await fetch(`${API_BASE}/strategy/overview`);
     if (!res.ok) throw new Error('Failed to fetch strategy overview');
     return res.json();
+  },
+
+  // Publishing Kits (Phase 9)
+  async getPublishingKits(projectId?: string, clipId?: string, status?: string, search?: string): Promise<PublishingKitListItem[]> {
+    const q = new URLSearchParams();
+    if (projectId) q.append('project_id', projectId);
+    if (clipId) q.append('clip_id', clipId);
+    if (status) q.append('status', status);
+    if (search) q.append('search', search);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE}/publishing-kits/${qs}`);
+    if (!res.ok) throw new Error('Failed to fetch publishing kits');
+    return res.json();
+  },
+
+  async getPublishingKit(kitId: string): Promise<PublishingKitDetail> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}`);
+    if (!res.ok) throw new Error('Failed to fetch publishing kit');
+    return res.json();
+  },
+
+  async getPublishingKitByClip(clipId: string): Promise<PublishingKitDetail | null> {
+    const res = await fetch(`${API_BASE}/publishing-kits/by-clip/${clipId}`);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('Failed to fetch publishing kit for clip');
+    return res.json();
+  },
+
+  async generatePublishingKit(
+    clipId: string,
+    channelProfileId?: string,
+    modelName: string = 'qwen2.5:3b',
+    regeneratePlatform?: 'youtube' | 'instagram'
+  ): Promise<PublishingKitDetail> {
+    const res = await fetch(`${API_BASE}/publishing-kits/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clip_id: clipId,
+        channel_profile_id: channelProfileId || null,
+        model_name: modelName,
+        regenerate_platform: regeneratePlatform || null
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to generate publishing kit' }));
+      throw new Error(err.detail || 'Failed to generate publishing kit');
+    }
+    return res.json();
+  },
+
+  async updatePublishingKit(kitId: string, data: any): Promise<PublishingKitDetail> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to update publishing kit' }));
+      throw new Error(err.detail || 'Failed to update publishing kit');
+    }
+    return res.json();
+  },
+
+  async regeneratePublishingKit(
+    kitId: string,
+    platform: 'youtube' | 'instagram' | 'both',
+    fieldName?: string,
+    modelName: string = 'qwen2.5:3b'
+  ): Promise<PublishingKitDetail> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platform,
+        field_name: fieldName || null,
+        model_name: modelName
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to regenerate publishing kit content' }));
+      throw new Error(err.detail || 'Failed to regenerate publishing kit content');
+    }
+    return res.json();
+  },
+
+  async markPublishingKitReady(kitId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}/mark-ready`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to mark publishing kit as ready');
+    return res.json();
+  },
+
+  async markPublishingKitPublished(kitId: string, publishedUrl?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}/mark-published`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ published_url: publishedUrl || null })
+    });
+    if (!res.ok) throw new Error('Failed to mark publishing kit as published');
+    return res.json();
+  },
+
+  async deletePublishingKit(kitId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/publishing-kits/${kitId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Failed to delete publishing kit');
+    return res.json();
+  },
+
+  getPublishingKitExportUrl(kitId: string, format: 'txt' | 'json' | 'zip'): string {
+    return `${API_BASE}/publishing-kits/${kitId}/export?format=${format}`;
   }
 };

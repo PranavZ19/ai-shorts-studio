@@ -21,7 +21,8 @@ import {
   Eye,
   XCircle,
   CheckCircle2,
-  Zap
+  Zap,
+  Share2
 } from 'lucide-react';
 import { ClipItem, SourceVideoItem } from '../types';
 import { api } from '../services/api';
@@ -472,6 +473,17 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                     </a>
                   )}
                 </div>
+
+                <button
+                  onClick={() => {
+                    onSelectClip?.(selectedClip.id);
+                    onNavigate('publishing');
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-brand-600 to-accent-purple hover:from-brand-500 hover:to-accent-purple/90 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Generate / Open Publishing Kit →</span>
+                </button>
 
                 <div className="flex items-center justify-between pt-2 border-t border-accent-emerald/20 text-xs">
                   <button

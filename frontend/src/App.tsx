@@ -161,11 +161,19 @@ export function App() {
               projects={projects}
               storageUsedMb={dashboardStats?.stats.storage_used_mb ?? 0}
               onRefresh={fetchAllData}
+              onNavigate={setCurrentTab}
+              onSelectClip={(id) => setSelectedClipId(id)}
             />
           )}
 
           {currentTab === 'publishing' && (
-            <PublishingPage onNavigate={setCurrentTab} />
+            <PublishingPage
+              onNavigate={setCurrentTab}
+              selectedClipId={selectedClipId}
+              onSelectClip={(id) => setSelectedClipId(id)}
+              clips={clips}
+              projects={projects}
+            />
           )}
 
           {currentTab === 'analytics' && (

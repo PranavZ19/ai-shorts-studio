@@ -1183,6 +1183,20 @@ export const CreatorStrategyPage: React.FC<CreatorStrategyPageProps> = ({
 
                   {/* Calendar Card Actions */}
                   <div className="flex items-center space-x-2 self-end md:self-center">
+                    {post.clip_id && (
+                      <button
+                        onClick={() => {
+                          onSelectClip?.(post.clip_id!);
+                          onNavigate('publishing');
+                        }}
+                        className="px-2.5 py-1 bg-brand-500/20 hover:bg-brand-500 text-brand-300 hover:text-white rounded text-[11px] font-medium border border-brand-500/40 transition-colors flex items-center gap-1"
+                        title="Open AI Publishing Kit"
+                      >
+                        <Share2 className="w-3 h-3 text-pink-400" />
+                        <span>Publishing Kit</span>
+                      </button>
+                    )}
+
                     {post.status !== 'published' && (
                       <button
                         onClick={() => handlePostStatus(post.id!, 'published')}

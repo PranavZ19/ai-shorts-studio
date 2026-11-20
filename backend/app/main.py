@@ -15,7 +15,8 @@ from app.api import (
     downloads_router,
     analytics_router,
     settings_router,
-    strategy_router
+    strategy_router,
+    publishing_kits_router
 )
 
 # Initialize SQLite database tables and migrations
@@ -80,6 +81,7 @@ app.include_router(downloads_router)
 app.include_router(analytics_router)
 app.include_router(settings_router)
 app.include_router(strategy_router)
+app.include_router(publishing_kits_router)
 
 @app.get("/api/health")
 def health_check():

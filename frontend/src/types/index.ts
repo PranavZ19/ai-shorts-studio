@@ -344,3 +344,102 @@ export interface StrategyOverviewData {
     optimal_length: string;
   };
 }
+
+export interface TitleVariation {
+  title: string;
+  strategy: string;
+  explanation: string;
+  char_count: number;
+}
+
+export interface CaptionVariation {
+  type: string;
+  text: string;
+  char_count: number;
+}
+
+export interface YouTubeKitData {
+  primary_title_index: number;
+  titles: TitleVariation[];
+  description_short: string;
+  description_alt: string;
+  description_seo: string;
+  selected_description: 'short' | 'alt' | 'seo';
+  hashtags: {
+    broad?: string[];
+    specific?: string[];
+    audience?: string[];
+    all?: string[];
+  };
+  tags_csv: string;
+  category: string;
+  pinned_comment: string;
+  thumbnail_texts: string[];
+  playlist_topic?: string;
+  audience_positioning?: string;
+  cta: string;
+}
+
+export interface InstagramKitData {
+  selected_caption_index: number;
+  captions: CaptionVariation[];
+  hashtags: {
+    niche?: string[];
+    topic?: string[];
+    community?: string[];
+    all?: string[];
+  };
+  cover_texts: string[];
+  first_line_hook: string;
+  cta: string;
+  keywords_csv: string;
+  target_audience?: string;
+  posting_category?: string;
+  audio_direction: string;
+}
+
+export interface PublishingKitListItem {
+  id: string;
+  clip_id: string;
+  project_id: string;
+  video_id: string;
+  primary_title: string;
+  clip_title?: string;
+  thumbnail_url?: string;
+  duration: number;
+  status: 'draft' | 'ready' | 'published';
+  language: string;
+  published_url?: string;
+  scheduled_post_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PublishingKitDetail {
+  id: string;
+  clip_id: string;
+  project_id: string;
+  video_id: string;
+  channel_profile_id?: string;
+  scheduled_post_id?: string;
+  status: 'draft' | 'ready' | 'published';
+  language: string;
+  published_url?: string;
+  clip_transcript_used?: string;
+  clip?: {
+    title: string;
+    duration: number;
+    overall_score: number;
+    thumbnail_url?: string;
+    stream_url?: string;
+    output_path?: string;
+    aspect_ratio: string;
+    resolution: string;
+  };
+  youtube: YouTubeKitData;
+  instagram: InstagramKitData;
+  brand_settings_applied: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+

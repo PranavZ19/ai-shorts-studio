@@ -12,6 +12,7 @@ from app.models.strategy import (
     ScheduledPost,
     PostPerformance
 )
+from app.models.publishing_kit import PublishingKit
 
 __all__ = [
     "Project",
@@ -26,5 +27,6 @@ __all__ = [
     "TrendTopic",
     "ContentIdea",
     "ScheduledPost",
-    "PostPerformance"
+    "PostPerformance",
+    "PublishingKit"
 ]

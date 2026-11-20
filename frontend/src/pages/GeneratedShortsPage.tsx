@@ -29,7 +29,8 @@ import {
   Square,
   Clock,
   Layers,
-  HardDrive
+  HardDrive,
+  Share2
 } from 'lucide-react';
 import { ClipItem } from '../types';
 import { api } from '../services/api';
@@ -659,6 +660,17 @@ export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips,
                         <Sliders className="w-3.5 h-3.5" />
                       </button>
 
+                      <button
+                        onClick={() => {
+                          onSelectClip?.(clip.id);
+                          onNavigate('publishing');
+                        }}
+                        className="p-1.5 rounded bg-surface-lighter hover:bg-pink-600/30 text-gray-300 hover:text-pink-300 transition-colors"
+                        title="Open AI Publishing Kit"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-pink-400" />
+                      </button>
+
                       {isRendered && (
                         <a
                           href={api.getClipMp4Url(clip.id, true)}
@@ -969,6 +981,18 @@ export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips,
                   >
                     <Sliders className="w-3.5 h-3.5" />
                     <span>Open in Clip Editor / Re-render</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onSelectClip?.(previewClip.id);
+                      setPreviewClip(null);
+                      onNavigate('publishing');
+                    }}
+                    className="text-xs text-pink-400 hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Open AI Publishing Kit →</span>
                   </button>
 
                   <a

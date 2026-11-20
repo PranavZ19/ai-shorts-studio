@@ -17,6 +17,13 @@ class ChannelProfile(Base):
     posting_days_csv = Column(String, default="mon,tue,wed,thu,fri")
     preferred_hours_csv = Column(String, default="12:00,15:00,18:00,20:00")
     max_uploads_per_day = Column(Integer, default=2)
+    brand_voice = Column(String(50), default="Conversational")
+    content_language = Column(String(50), default="English")
+    target_audience_level = Column(String(50), default="General audience")
+    default_cta = Column(String(200), default="Subscribe for more")
+    creator_name = Column(String(100), nullable=True)
+    creator_bio = Column(Text, nullable=True)
+    creator_links_json = Column(Text, default="[]")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

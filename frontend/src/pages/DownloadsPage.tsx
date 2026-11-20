@@ -16,7 +16,8 @@ import {
   Sparkles,
   ExternalLink,
   Film,
-  Info
+  Info,
+  Share2
 } from 'lucide-react';
 import { ClipItem, ProjectItem } from '../types';
 import { api } from '../services/api';
@@ -26,13 +27,17 @@ interface DownloadsPageProps {
   projects: ProjectItem[];
   storageUsedMb: number;
   onRefresh: () => void;
+  onNavigate?: (tab: string) => void;
+  onSelectClip?: (id: string) => void;
 }
 
 export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   clips,
   projects,
   storageUsedMb,
-  onRefresh
+  onRefresh,
+  onNavigate,
+  onSelectClip
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
   const [includeSourceInProject, setIncludeSourceInProject] = useState<boolean>(false);
@@ -498,6 +503,20 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                           >
                             <Archive className="w-3.5 h-3.5 text-brand-300" />
                           </a>
+
+                          {/* Publishing Kit */}
+                          {onNavigate && (
+                            <button
+                              onClick={() => {
+                                onSelectClip?.(clip.id);
+                                onNavigate('publishing');
+                              }}
+                              className="p-1.5 rounded bg-surface-lighter hover:bg-pink-600/30 text-gray-300 hover:text-pink-300 transition-colors"
+                              title="Open AI Publishing Kit"
+                            >
+                              <Share2 className="w-3.5 h-3.5 text-pink-400" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

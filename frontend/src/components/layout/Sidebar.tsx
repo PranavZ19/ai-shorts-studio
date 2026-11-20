@@ -34,7 +34,7 @@ const navItems = [
   { id: 'clip-editor', label: 'Clip Editor', icon: Sliders },
   { id: 'generated-shorts', label: 'Generated Shorts', icon: PlaySquare },
   { id: 'downloads', label: 'Downloads', icon: Download },
-  { id: 'publishing', label: 'Publishing', icon: Share2 },
+  { id: 'publishing', label: 'Publishing Kit', icon: Share2 },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

@@ -2,6 +2,9 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.config import settings
 
+# Ensure storage directory exists before creating engine
+settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
 # SQLite connection with foreign keys enabled & WAL mode
 engine = create_engine(
     settings.DATABASE_URL,
@@ -112,5 +115,25 @@ def run_migrations():
             if "channel_profile_id" not in existing_perf and len(existing_perf) > 0:
                 conn.execute(text("ALTER TABLE post_performances ADD COLUMN channel_profile_id VARCHAR(36)"))
                 conn.commit()
+        except Exception:
+            pass
+
+        # Check channel_profiles brand columns
+        try:
+            res = conn.execute(text("PRAGMA table_info(channel_profiles)"))
+            existing_prof = [row[1] for row in res.fetchall()]
+            needed_prof = [
+                ("brand_voice", "VARCHAR(50) DEFAULT 'Conversational'"),
+                ("content_language", "VARCHAR(50) DEFAULT 'English'"),
+                ("target_audience_level", "VARCHAR(50) DEFAULT 'General audience'"),
+                ("default_cta", "VARCHAR(200) DEFAULT 'Subscribe for more'"),
+                ("creator_name", "VARCHAR(100)"),
+                ("creator_bio", "TEXT"),
+                ("creator_links_json", "TEXT DEFAULT '[]'")
+            ]
+            for col_name, col_type in needed_prof:
+                if col_name not in existing_prof and len(existing_prof) > 0:
+                    conn.execute(text(f"ALTER TABLE channel_profiles ADD COLUMN {col_name} {col_type}"))
+                    conn.commit()
         except Exception:
             pass
