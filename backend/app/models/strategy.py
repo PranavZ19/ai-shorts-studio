@@ -106,6 +106,7 @@ class PostPerformance(Base):
     __tablename__ = "post_performances"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    channel_profile_id = Column(String, ForeignKey("channel_profiles.id"), nullable=True)
     scheduled_post_id = Column(String, ForeignKey("scheduled_posts.id"), nullable=True)
     clip_id = Column(String, ForeignKey("clips.id"), nullable=True)
     platform = Column(String, default="youtube_shorts")

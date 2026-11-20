@@ -641,9 +641,12 @@ export const api = {
     return res.json();
   },
 
-  async getPerformanceInsights(platform?: string): Promise<any> {
-    const url = platform ? `${API_BASE}/strategy/performance?platform=${platform}` : `${API_BASE}/strategy/performance`;
-    const res = await fetch(url);
+  async getPerformanceInsights(platform?: string, profileId?: string): Promise<any> {
+    const q = new URLSearchParams();
+    if (platform) q.append('platform', platform);
+    if (profileId) q.append('profile_id', profileId);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE}/strategy/performance${qs}`);
     if (!res.ok) throw new Error('Failed to fetch performance insights');
     return res.json();
   },

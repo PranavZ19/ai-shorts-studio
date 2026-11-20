@@ -104,3 +104,13 @@ def run_migrations():
                     conn.commit()
                 except Exception:
                     pass
+
+        # Check post_performances columns
+        try:
+            res = conn.execute(text("PRAGMA table_info(post_performances)"))
+            existing_perf = [row[1] for row in res.fetchall()]
+            if "channel_profile_id" not in existing_perf and len(existing_perf) > 0:
+                conn.execute(text("ALTER TABLE post_performances ADD COLUMN channel_profile_id VARCHAR(36)"))
+                conn.commit()
+        except Exception:
+            pass

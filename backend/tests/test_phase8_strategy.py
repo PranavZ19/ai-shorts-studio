@@ -261,14 +261,15 @@ def run_phase8_tests():
 
     # 18. Manual performance metric entry
     print("\n[Test 18] Testing Manual Video Performance Metric Logging...")
-    metrics = [
+    metrics_a = [
         {"day": "Friday", "hour": 18, "views": 4200, "retention": 84.0, "likes": 320, "topic": "AI Hardware"},
         {"day": "Friday", "hour": 18, "views": 3800, "retention": 81.0, "likes": 290, "topic": "Local Models"},
         {"day": "Monday", "hour": 10, "views": 1100, "retention": 55.0, "likes": 60, "topic": "General Tech"},
         {"day": "Wednesday", "hour": 15, "views": 2200, "retention": 68.0, "likes": 140, "topic": "Coding Agents"}
     ]
-    for m in metrics:
+    for m in metrics_a:
         res_log = client.post("/api/strategy/performance", json={
+            "channel_profile_id": prof_id,
             "platform": "youtube_shorts",
             "topic": m["topic"],
             "video_duration": 34.0,
@@ -281,17 +282,43 @@ def run_phase8_tests():
             "comments_count": 18
         })
         assert res_log.status_code == 200
-    print(f"  -> Logged {len(metrics)} video performance entries successfully.")
 
-    # 19. Performance insight calculations
-    print("\n[Test 19] Testing Empirical Performance Insight Calculations...")
-    res_perf = client.get("/api/strategy/performance")
-    assert res_perf.status_code == 200
-    perf_data = res_perf.json()
-    assert perf_data["has_enough_data"] is True
-    assert "Friday" in perf_data["best_days"]
-    assert "18:00" in perf_data["best_hours"]
-    print(f"  -> Empirical learning confirmed: Top Day = {perf_data['best_days'][0]} (Avg: {perf_data.get('top_day_avg_views')} views), Top Hour = {perf_data['best_hours'][0]}")
+    # Log separate metrics for Channel Profile B to verify data isolation
+    for fit_topic in ["Kettlebell Form", "HIIT Sprint"]:
+        res_fit_log = client.post("/api/strategy/performance", json={
+            "channel_profile_id": fit_id,
+            "platform": "instagram_reels",
+            "topic": fit_topic,
+            "video_duration": 28.0,
+            "upload_day_of_week": "Tuesday",
+            "upload_hour": 9,
+            "views_count": 850,
+            "retention_pct": 72.0,
+            "likes_count": 95,
+            "shares_count": 15,
+            "comments_count": 8
+        })
+        assert res_fit_log.status_code == 200
+    print(f"  -> Logged {len(metrics_a)} entries for Profile A and 2 entries for Profile B.")
+
+    # 19. Performance insight calculations & Channel Profile Data Isolation
+    print("\n[Test 19] Testing Empirical Performance Insight Calculations & Profile Isolation...")
+    res_perf_a = client.get(f"/api/strategy/performance?profile_id={prof_id}")
+    assert res_perf_a.status_code == 200
+    perf_a = res_perf_a.json()
+    assert perf_a["has_enough_data"] is True
+    assert perf_a["sample_size"] == 4
+    assert "Friday" in perf_a["best_days"]
+    assert "18:00" in perf_a["best_hours"]
+
+    # Verify Profile B has insufficient data and its metrics are isolated from Profile A
+    res_perf_b = client.get(f"/api/strategy/performance?profile_id={fit_id}")
+    assert res_perf_b.status_code == 200
+    perf_b = res_perf_b.json()
+    assert perf_b["has_enough_data"] is False
+    assert perf_b["sample_size"] == 2
+    assert "Using general posting-time estimates" in perf_b["message"]
+    print(f"  -> Isolation verified: Profile A has {perf_a['sample_size']} entries (Top Day = {perf_a['best_days'][0]}), Profile B has {perf_b['sample_size']} entries.")
 
     # 20. Missing or unavailable trend sources fallback
     print("\n[Test 20] Testing Unavailable Trend Source Fallback...")
@@ -308,8 +335,8 @@ def run_phase8_tests():
     assert "Emerging Trends" in baseline_topics[0]["topic_name"] or "Quantum" in baseline_topics[0]["topic_name"]
     print(f"  -> Graceful degradation confirmed: Successfully served {len(fb_json['topics'])} topics from '{fb_json['source']}' with curated baseline fallback ready.")
 
-    # Overview endpoint check
-    print("\n[Final Check] Testing Creator Strategy Overview Aggregated API...")
+    # 21. Overview endpoint check
+    print("\n[Test 21] Testing Creator Strategy Overview Aggregated API...")
     res_ov = client.get("/api/strategy/overview")
     assert res_ov.status_code == 200
     ov_data = res_ov.json()
@@ -319,7 +346,8 @@ def run_phase8_tests():
     print("  -> Overview endpoint responsive and fully aggregated.")
 
     print("\n" + "=" * 75)
-    print("     ALL 20 PHASE 8 CREATOR STRATEGY TESTS PASSED (100%)!")
+    print("     ALL 21 PHASE 8 CREATOR STRATEGY INTEGRATION TESTS PASSED (100%)!")
+    print("     Summary: 21 collected, 21 passed, 0 failed, 0 skipped")
     print("=" * 75)
 
     # Cleanup test data

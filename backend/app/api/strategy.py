@@ -118,6 +118,7 @@ class PostStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(scheduled|published|skipped|draft)$")
 
 class PerformanceMetricCreate(BaseModel):
+    channel_profile_id: Optional[str] = None
     scheduled_post_id: Optional[str] = None
     clip_id: Optional[str] = None
     platform: str = "youtube_shorts"
@@ -589,10 +590,10 @@ def update_post_status(post_id: str, data: PostStatusUpdate, db: Session = Depen
 # ----------------- PERFORMANCE INSIGHTS & LEARNING -----------------
 
 @router.get("/performance")
-def get_performance_insights(platform: Optional[str] = None, db: Session = Depends(get_db)):
+def get_performance_insights(platform: Optional[str] = None, profile_id: Optional[str] = None, db: Session = Depends(get_db)):
     """Return AI performance learning calculations based on logged uploads."""
     scheduler = SchedulerService(db)
-    return scheduler.calculate_performance_insights(platform=platform)
+    return scheduler.calculate_performance_insights(platform=platform, profile_id=profile_id)
 
 @router.post("/performance")
 def log_performance_metrics(data: PerformanceMetricCreate, db: Session = Depends(get_db)):
@@ -604,6 +605,7 @@ def log_performance_metrics(data: PerformanceMetricCreate, db: Session = Depends
         eng_rate = round((total_eng / data.views_count) * 100, 2)
 
     perf = PostPerformance(
+        channel_profile_id=data.channel_profile_id,
         scheduled_post_id=data.scheduled_post_id,
         clip_id=data.clip_id,
         platform=data.platform,

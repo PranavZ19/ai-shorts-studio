@@ -40,7 +40,7 @@ CURATED_BASELINES: Dict[str, List[Dict[str, Any]]] = {
             "source_url": "https://trends.google.com",
             "region": "GLOBAL",
             "trend_status": "rising",
-            "trend_indicator": "+420% search interest",
+            "trend_indicator": "High search interest (Curated baseline)",
             "opportunity_score": 88.0,
             "why_attention": "Consumer demand for zero cloud subscriptions and private personal computing.",
             "target_audience": "Tech enthusiasts, developers, and privacy-conscious creators",
@@ -59,7 +59,7 @@ CURATED_BASELINES: Dict[str, List[Dict[str, Any]]] = {
             "source_url": "https://news.ycombinator.com",
             "region": "GLOBAL",
             "trend_status": "rising",
-            "trend_indicator": "Top Trending on Hacker News",
+            "trend_indicator": "Top technical discussion (Curated baseline)",
             "opportunity_score": 92.0,
             "why_attention": "Massive productivity multiplier without recurring vendor lock-in.",
             "target_audience": "Software engineers, indie hackers, and automation enthusiasts",
@@ -80,7 +80,7 @@ CURATED_BASELINES: Dict[str, List[Dict[str, Any]]] = {
             "source_url": "https://huggingface.co",
             "region": "GLOBAL",
             "trend_status": "rising",
-            "trend_indicator": "+380% repo stars",
+            "trend_indicator": "High developer interest (Curated baseline)",
             "opportunity_score": 94.0,
             "why_attention": "Enables ultra-fast local inference on affordable hardware like 4GB RTX laptops.",
             "target_audience": "AI researchers, PC builders, and everyday creators",
@@ -99,7 +99,7 @@ CURATED_BASELINES: Dict[str, List[Dict[str, Any]]] = {
             "source_url": "https://trends.google.com",
             "region": "US",
             "trend_status": "rising",
-            "trend_indicator": "+290% news coverage",
+            "trend_indicator": "Frequently discussed (Curated baseline)",
             "opportunity_score": 82.0,
             "why_attention": "Major platforms mandating disclosure badges on synthetic voices and video.",
             "target_audience": "Video editors, social media creators, journalists",
@@ -141,7 +141,7 @@ CURATED_BASELINES: Dict[str, List[Dict[str, Any]]] = {
             "source_url": "https://reddit.com/r/gaming",
             "region": "GLOBAL",
             "trend_status": "rising",
-            "trend_indicator": "+310% player engagement",
+            "trend_indicator": "Top community discussion (Curated baseline)",
             "opportunity_score": 86.0,
             "why_attention": "Fatigue from scripted open worlds leading players toward unpredictable sandbox physics.",
             "target_audience": "Gamers, PC modders, clip streamers",
@@ -193,10 +193,12 @@ class TrendDiscoveryService:
                 ).order_by(TrendTopic.opportunity_score.desc()).all()
 
                 if topics:
+                    data_type = "curated_baseline" if cached_snapshot.is_fallback else "cached"
                     return {
                         "niche": niche,
                         "region": region,
                         "source": cached_snapshot.source,
+                        "data_type": data_type,
                         "fetched_at": cached_snapshot.fetched_at.isoformat(),
                         "is_cached": True,
                         "is_fallback": cached_snapshot.is_fallback,
@@ -239,6 +241,17 @@ class TrendDiscoveryService:
         except Exception as e:
             logger.warning(f"Error fetching live public trends: {e}")
 
+        # Deduplicate fetched topics across sources
+        if fetched_topics:
+            seen_topics = set()
+            unique_fetched = []
+            for t in fetched_topics:
+                norm_key = re.sub(r"[^a-z0-9]", "", t["topic_name"].lower())[:32]
+                if norm_key and norm_key not in seen_topics:
+                    seen_topics.add(norm_key)
+                    unique_fetched.append(t)
+            fetched_topics = unique_fetched
+
         # 3. If live fetch failed or returned empty (e.g. offline sandbox), fall back to DB or curated baseline
         if not fetched_topics:
             # Check if ANY cached snapshot exists in DB (even older than TTL)
@@ -255,6 +268,7 @@ class TrendDiscoveryService:
                         "niche": niche,
                         "region": region,
                         "source": f"Cached Archive ({older_snapshot.source})",
+                        "data_type": "cached",
                         "fetched_at": older_snapshot.fetched_at.isoformat(),
                         "is_cached": True,
                         "is_fallback": True,
@@ -292,7 +306,7 @@ class TrendDiscoveryService:
                 source_url=t.get("source_url", "https://trends.google.com"),
                 region=region,
                 trend_status=t.get("trend_status", "rising"),
-                trend_indicator=t.get("trend_indicator", "+250% momentum"),
+                trend_indicator=t.get("trend_indicator", "Emerging topic"),
                 opportunity_score=float(t.get("opportunity_score", 80.0)),
                 why_attention=t.get("why_attention", ""),
                 target_audience=t.get("target_audience", "Social Media Short Viewers"),
@@ -313,6 +327,7 @@ class TrendDiscoveryService:
             "niche": niche,
             "region": region,
             "source": source_name,
+            "data_type": "curated_baseline" if is_fallback else "live",
             "fetched_at": snapshot.fetched_at.isoformat(),
             "is_cached": False,
             "is_fallback": is_fallback,
@@ -346,7 +361,7 @@ class TrendDiscoveryService:
                     traffic = child.text or ""
                     break
 
-            indicator = f"{traffic} searches" if traffic else "Rising Search Trend"
+            indicator = f"{traffic} searches (Google Trends)" if traffic else "High Search Interest"
             items.append({
                 "topic_name": title,
                 "explanation": clean_desc if clean_desc else f"High search surge across {geo} region today.",
@@ -472,7 +487,7 @@ class TrendDiscoveryService:
                 "source_url": "https://trends.google.com",
                 "region": "GLOBAL",
                 "trend_status": "rising",
-                "trend_indicator": "+280% viewer preference",
+                "trend_indicator": "Frequently discussed (Curated baseline)",
                 "opportunity_score": 85.0,
                 "why_attention": f"High demand for no-filler {clean_name} tips and actionable insights.",
                 "target_audience": f"{clean_name} creators and enthusiastic learners",

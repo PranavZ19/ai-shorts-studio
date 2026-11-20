@@ -711,16 +711,22 @@ export const CreatorStrategyPage: React.FC<CreatorStrategyPageProps> = ({
 
             <div className="flex items-center space-x-3 text-xs text-gray-400">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className={`w-2 h-2 rounded-full ${
+                  trendsData?.is_fallback ? 'bg-amber-400' : trendsData?.is_cached ? 'bg-cyan-400' : 'bg-emerald-400 animate-pulse'
+                }`} />
                 Source: <strong className="text-gray-200">{trendsData?.source || 'Public Feeds'}</strong>
               </span>
               <span>•</span>
-              <span>Updated: {trendsData?.fetched_at ? new Date(trendsData.fetched_at).toLocaleTimeString() : 'Recent'}</span>
-              {trendsData?.is_fallback && (
-                <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[10px] border border-amber-500/20">
-                  Cached Baseline
-                </span>
-              )}
+              <span>Collected: {trendsData?.fetched_at ? new Date(trendsData.fetched_at).toLocaleTimeString() : 'Recent'}</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                trendsData?.is_fallback
+                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                  : trendsData?.is_cached
+                  ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                  : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+              }`}>
+                {trendsData?.is_fallback ? 'Curated Baseline Reference' : trendsData?.is_cached ? 'Locally Cached Snapshot' : 'Live Public Feed'}
+              </span>
             </div>
           </div>
 
@@ -778,7 +784,7 @@ export const CreatorStrategyPage: React.FC<CreatorStrategyPageProps> = ({
                   {/* Opportunity Score Bar */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-400 text-[11px]">Opportunity Score</span>
+                      <span className="text-gray-400 text-[11px]">AI Opportunity Assessment</span>
                       <span className="font-bold text-white">{t.opportunity_score} / 100</span>
                     </div>
                     <div className="w-full bg-surface-lighter rounded-full h-2 overflow-hidden">
@@ -1233,6 +1239,18 @@ export const CreatorStrategyPage: React.FC<CreatorStrategyPageProps> = ({
               <span>Log Video Performance</span>
             </button>
           </div>
+
+          {!performance?.has_enough_data && (
+            <div className="p-3.5 rounded-lg bg-surface-lighter/80 border border-surface-border flex items-start space-x-3 text-xs">
+              <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-white block mb-0.5">Using General Estimates</strong>
+                <p className="text-gray-400 leading-relaxed">
+                  {performance?.message || 'Using general posting-time estimates. Add your publishing performance data to personalize recommendations.'}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="bg-surface p-5 rounded-xl border border-surface-border space-y-3">

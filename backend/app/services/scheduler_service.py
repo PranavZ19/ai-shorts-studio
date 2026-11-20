@@ -16,7 +16,7 @@ PLATFORM_BASELINES = {
         "peak_hours": ["12:00", "15:00", "18:00", "20:00"],
         "default_frequency": 5,
         "min_spacing_hours": 4,
-        "baseline_reason": "Baseline YouTube Shorts algorithm optimizes for lunchtime mobile browsing (12-15h) and early evening relaxation (18-21h)."
+        "baseline_reason": "General baseline estimate for YouTube Shorts (not a guaranteed posting time): Early evening and weekend leisure hours capture high vertical mobile viewing."
     },
     "instagram_reels": {
         "name": "Instagram Reels",
@@ -24,7 +24,7 @@ PLATFORM_BASELINES = {
         "peak_hours": ["09:00", "13:00", "19:00", "21:00"],
         "default_frequency": 4,
         "min_spacing_hours": 6,
-        "baseline_reason": "Baseline Instagram Reels algorithm favors morning commute (9h), midday lunch breaks (13h), and evening prime-time scroll (19-21h)."
+        "baseline_reason": "General baseline estimate for Instagram Reels (not a guaranteed posting time): Midday lunch breaks and evening prime-time scroll align with peak explore feed activity."
     }
 }
 
@@ -210,21 +210,23 @@ class SchedulerService:
             self.db.refresh(rec)
         return created_records
 
-    def calculate_performance_insights(self, platform: Optional[str] = None) -> Dict[str, Any]:
+    def calculate_performance_insights(self, platform: Optional[str] = None, profile_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyzes historical performance to extract real empirical creator insights:
         best days, best times, optimal video length, top performing topics, and engagement patterns.
         """
         query = self.db.query(PostPerformance)
+        if profile_id:
+            query = query.filter(PostPerformance.channel_profile_id == profile_id)
         if platform:
             query = query.filter(PostPerformance.platform == platform)
         records = query.all()
 
-        if len(records) < 3:
+        if len(records) < 4:
             return {
                 "has_enough_data": False,
                 "sample_size": len(records),
-                "message": "Insufficient historical data. Log at least 3 video performance metrics to unlock personalized channel learning.",
+                "message": "Using general posting-time estimates. Add your publishing performance data to personalize recommendations.",
                 "best_days": ["Friday", "Saturday", "Thursday"],
                 "best_hours": ["18:00", "12:00", "20:00"],
                 "optimal_length_range": "30 - 45 seconds",
@@ -298,7 +300,7 @@ class SchedulerService:
         return {
             "has_enough_data": True,
             "sample_size": len(records),
-            "message": f"Personalized insights derived from {len(records)} logged channel uploads.",
+            "message": f"Personalized recommendations based on {len(records)} logged channel uploads. Note: historical correlation does not guarantee future reach.",
             "best_days": sorted_days[:3],
             "best_hours": sorted_hours[:3],
             "top_day_avg_views": round(day_stats[sorted_days[0]]["avg_views"]) if sorted_days else 0,

@@ -114,10 +114,15 @@ class StrategyAIService:
         return ideas
 
     def _call_ollama_trend_analysis(self, topic: str, niche: str, indicator: str, model: str) -> Optional[Dict[str, Any]]:
+        # Sanitize untrusted external inputs
+        safe_topic = re.sub(r'["\\]', '', topic)[:120]
+        safe_indicator = re.sub(r'["\\]', '', indicator)[:80]
+        safe_niche = re.sub(r'["\\]', '', niche)[:40]
+
         prompt = f"""You are a senior YouTube Shorts and Instagram Reels strategist.
-Analyze this trending topic for a creator in the '{niche}' niche:
-Topic: "{topic}"
-Signal: "{indicator}"
+Analyze this trending topic for a creator in the '{safe_niche}' niche:
+Topic: "{safe_topic}"
+Signal: "{safe_indicator}"
 
 Respond ONLY with a valid JSON object matching this schema:
 {{
@@ -166,10 +171,14 @@ Do NOT output any markdown backticks, explanations, or prose. Just raw JSON."""
         count: int,
         model: str
     ) -> List[Dict[str, Any]]:
+        safe_niche = re.sub(r'["\\]', '', niche)[:40]
+        safe_topics = [re.sub(r'["\\]', '', str(t))[:120] for t in trending_topics[:5]]
+        safe_clip_themes = [re.sub(r'["\\]', '', str(c))[:80] for c in clip_titles[:4]]
+
         prompt = f"""You are an elite short-form video strategist.
-Generate {count} unique, high-retention Short/Reel concepts for the '{niche}' niche.
-Trending topics: {json.dumps(trending_topics)}
-Previous content themes: {json.dumps(clip_titles[:4])}
+Generate {count} unique, high-retention Short/Reel concepts for the '{safe_niche}' niche.
+Trending topics: {json.dumps(safe_topics)}
+Previous content themes: {json.dumps(safe_clip_themes)}
 
 Respond ONLY with a valid JSON array of {count} items matching this schema:
 [
