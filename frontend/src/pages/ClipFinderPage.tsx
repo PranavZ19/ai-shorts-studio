@@ -29,14 +29,23 @@ import { api } from '../services/api';
 
 interface ClipFinderPageProps {
   clips: ClipItem[];
+  selectedVideoId?: string | null;
+  onSelectVideo?: (id: string) => void;
   onNavigate: (tab: string) => void;
   onSelectClip?: (id: string) => void;
   onRefresh: () => void;
 }
 
-export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialClips, onNavigate, onSelectClip, onRefresh }) => {
+export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({
+  clips: initialClips,
+  selectedVideoId: initialSelectedVideoId,
+  onSelectVideo,
+  onNavigate,
+  onSelectClip,
+  onRefresh
+}) => {
   const [videos, setVideos] = useState<SourceVideoItem[]>([]);
-  const [selectedVideoId, setSelectedVideoId] = useState<string>('');
+  const [selectedVideoId, setSelectedVideoId] = useState<string>(initialSelectedVideoId || '');
   const [clips, setClips] = useState<ClipItem[]>(initialClips);
   const [selectedClip, setSelectedClip] = useState<ClipItem | null>(initialClips[0] || null);
 
@@ -63,6 +72,12 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialCl
   }, []);
 
   useEffect(() => {
+    if (initialSelectedVideoId) {
+      setSelectedVideoId(initialSelectedVideoId);
+    }
+  }, [initialSelectedVideoId]);
+
+  useEffect(() => {
     setClips(initialClips);
     if (!selectedClip && initialClips.length > 0) {
       selectClipForDetail(initialClips[0]);
@@ -73,7 +88,9 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({ clips: initialCl
     try {
       const vList = await api.getVideos();
       setVideos(vList);
-      if (vList.length > 0 && !selectedVideoId) {
+      if (initialSelectedVideoId) {
+        setSelectedVideoId(initialSelectedVideoId);
+      } else if (vList.length > 0 && !selectedVideoId) {
         setSelectedVideoId(vList[0].id);
       }
 

@@ -36,11 +36,12 @@ import { api } from '../services/api';
 
 interface GeneratedShortsPageProps {
   clips: ClipItem[];
+  onSelectClip?: (id: string) => void;
   onNavigate: (tab: string) => void;
   onRefresh: () => void;
 }
 
-export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips, onNavigate, onRefresh }) => {
+export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips, onSelectClip, onNavigate, onRefresh }) => {
   // Filters & Search
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -649,6 +650,7 @@ export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips,
 
                       <button
                         onClick={() => {
+                          onSelectClip?.(clip.id);
                           onNavigate('clip-editor');
                         }}
                         className="p-1.5 rounded bg-surface-lighter hover:bg-gray-700 text-gray-300 hover:text-white"
@@ -959,6 +961,7 @@ export const GeneratedShortsPage: React.FC<GeneratedShortsPageProps> = ({ clips,
                 <div className="flex items-center justify-between pt-1">
                   <button
                     onClick={() => {
+                      onSelectClip?.(previewClip.id);
                       setPreviewClip(null);
                       onNavigate('clip-editor');
                     }}

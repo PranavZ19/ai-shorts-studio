@@ -21,6 +21,33 @@ from app.api import (
 Base.metadata.create_all(bind=engine)
 run_migrations()
 
+def recover_dangling_jobs():
+    """Detect and safely mark any dangling in-progress jobs from previous server sessions."""
+    from app.database import SessionLocal
+    from app.models.job import ProcessingJob
+    from app.models.clip import Clip
+    db = SessionLocal()
+    try:
+        dangling_jobs = db.query(ProcessingJob).filter(ProcessingJob.status.in_(["running", "pending"])).all()
+        for j in dangling_jobs:
+            j.status = "interrupted"
+            j.message = "Process was interrupted by system restart. Ready to retry."
+            j.error_details = "Server restarted while job was active."
+
+        dangling_clips = db.query(Clip).filter(Clip.status == "exporting").all()
+        for c in dangling_clips:
+            if c.output_path and Path(c.output_path).exists():
+                c.status = "exported"
+            else:
+                c.status = "candidate"
+        db.commit()
+    except Exception as e:
+        print(f"Error during job recovery: {e}")
+    finally:
+        db.close()
+
+recover_dangling_jobs()
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,

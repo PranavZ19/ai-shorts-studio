@@ -32,7 +32,34 @@ def list_jobs(project_id: str = None, db: Session = Depends(get_db)):
         for j in jobs
     ]
 
-@router.get("/{job_id}/stream")
+@router.post("/{job_id}/cancel")
+def cancel_job(job_id: str, db: Session = Depends(get_db)):
+    """Cancel a running processing job."""
+    job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.status = "cancelled"
+    job.message = "Cancelled by user"
+    db.commit()
+    job_queue.publish(job_id, {
+        "status": "cancelled",
+        "progress_pct": 0,
+        "message": "Cancelled by user"
+    })
+    return {"success": True, "job_id": job_id, "status": "cancelled"}
+
+@router.post("/{job_id}/retry")
+def retry_job(job_id: str, db: Session = Depends(get_db)):
+    """Reset a failed or interrupted job for re-execution."""
+    job = db.query(ProcessingJob).filter(ProcessingJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.status = "pending"
+    job.progress_pct = 0.0
+    job.message = "Queued for retry"
+    job.error_details = None
+    db.commit()
+    return {"success": True, "job_id": job_id, "status": "pending"}
 async def stream_job_progress(job_id: str):
     """Server-Sent Events (SSE) stream for real-time progress updates across the 15 stages."""
     async def event_generator():

@@ -27,12 +27,14 @@ interface TranscriptPageProps {
   videos: SourceVideoItem[];
   selectedVideoId: string | null;
   onSelectVideo: (id: string) => void;
+  onNavigate?: (tab: string) => void;
 }
 
 export const TranscriptPage: React.FC<TranscriptPageProps> = ({
   videos,
   selectedVideoId,
-  onSelectVideo
+  onSelectVideo,
+  onNavigate
 }) => {
   const [currentVideoId, setCurrentVideoId] = useState<string>(selectedVideoId || (videos[0]?.id || ''));
   const [transcriptData, setTranscriptData] = useState<any | null>(null);
@@ -72,16 +74,14 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
   };
 
   useEffect(() => {
-    if (selectedVideoId) {
-      setCurrentVideoId(selectedVideoId);
-      fetchTranscript(selectedVideoId);
-    } else if (videos.length > 0 && !currentVideoId) {
-      setCurrentVideoId(videos[0].id);
-      fetchTranscript(videos[0].id);
-    } else if (currentVideoId) {
-      fetchTranscript(currentVideoId);
+    const targetId = selectedVideoId || (videos[0]?.id || '');
+    if (targetId && targetId !== currentVideoId) {
+      setCurrentVideoId(targetId);
+      fetchTranscript(targetId);
+    } else if (targetId && !transcriptData) {
+      fetchTranscript(targetId);
     }
-  }, [selectedVideoId, currentVideoId, videos]);
+  }, [selectedVideoId, videos.length]);
 
   const handleStartTranscribe = async () => {
     if (!currentVideoId) return;
@@ -142,26 +142,38 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
           </p>
         </div>
 
-        {/* Video Dropdown Selector */}
-        {videos.length > 0 && (
-          <div className="flex items-center space-x-2 bg-surface px-3 py-1.5 rounded-lg border border-surface-border text-xs">
-            <span className="text-gray-400">Target Video:</span>
-            <select
-              value={currentVideoId}
-              onChange={(e) => {
-                setCurrentVideoId(e.target.value);
-                onSelectVideo(e.target.value);
-              }}
-              className="bg-transparent text-white font-medium outline-none cursor-pointer max-w-[220px] truncate"
+        {/* Video Dropdown & Action CTA */}
+        <div className="flex items-center space-x-2">
+          {videos.length > 0 && (
+            <div className="flex items-center space-x-2 bg-surface px-3 py-1.5 rounded-lg border border-surface-border text-xs">
+              <span className="text-gray-400">Target Video:</span>
+              <select
+                value={currentVideoId}
+                onChange={(e) => {
+                  setCurrentVideoId(e.target.value);
+                  onSelectVideo(e.target.value);
+                }}
+                className="bg-transparent text-white font-medium outline-none cursor-pointer max-w-[220px] truncate"
+              >
+                {videos.map((v) => (
+                  <option key={v.id} value={v.id} className="bg-surface text-gray-200">
+                    {v.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {transcriptData?.segments?.length > 0 && onNavigate && (
+            <button
+              onClick={() => onNavigate('clip-finder')}
+              className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all"
             >
-              {videos.map((v) => (
-                <option key={v.id} value={v.id} className="bg-surface text-gray-200">
-                  {v.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Find AI Clips →</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Grid: Video Player on Left, Transcript Segments on Right */}
@@ -454,6 +466,23 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
                   </div>
                 );
               })}
+
+              {/* Bottom Next Step Banner */}
+              {onNavigate && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-brand-900/30 via-surface-lighter to-brand-900/30 border border-brand-500/30 flex items-center justify-between mt-4">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Transcript Ready for Moment Analysis</h4>
+                    <p className="text-[11px] text-gray-400">Use local AI to detect viral hooks, calculate scores, and extract vertical shorts.</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigate('clip-finder')}
+                    className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Proceed to Clip Finder</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-surface rounded-xl p-12 text-center border border-surface-border space-y-3">

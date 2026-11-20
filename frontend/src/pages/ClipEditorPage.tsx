@@ -472,6 +472,21 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                     </a>
                   )}
                 </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-accent-emerald/20 text-xs">
+                  <button
+                    onClick={() => onNavigate('generated-shorts')}
+                    className="text-brand-300 hover:text-white font-semibold flex items-center gap-1"
+                  >
+                    <span>View in Shorts Gallery →</span>
+                  </button>
+                  <button
+                    onClick={() => onNavigate('downloads')}
+                    className="text-emerald-400 hover:text-white font-semibold flex items-center gap-1"
+                  >
+                    <span>Go to Downloads →</span>
+                  </button>
+                </div>
               </div>
             )}
 

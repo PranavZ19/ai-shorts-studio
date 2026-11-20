@@ -100,6 +100,7 @@ export function App() {
             <VideoLibraryPage
               videos={videos}
               onNavigate={setCurrentTab}
+              onSelectVideo={(id) => setSelectedVideoId(id)}
               onRefresh={fetchAllData}
             />
           )}
@@ -107,6 +108,8 @@ export function App() {
           {currentTab === 'clip-finder' && (
             <ClipFinderPage
               clips={clips}
+              selectedVideoId={selectedVideoId}
+              onSelectVideo={(id) => setSelectedVideoId(id)}
               onNavigate={(tab) => {
                 setCurrentTab(tab);
               }}
@@ -120,6 +123,7 @@ export function App() {
               videos={videos}
               selectedVideoId={selectedVideoId}
               onSelectVideo={(id) => setSelectedVideoId(id)}
+              onNavigate={setCurrentTab}
             />
           )}
 
@@ -137,6 +141,7 @@ export function App() {
           {currentTab === 'generated-shorts' && (
             <GeneratedShortsPage
               clips={clips}
+              onSelectClip={(id) => setSelectedClipId(id)}
               onNavigate={setCurrentTab}
               onRefresh={fetchAllData}
             />

@@ -21,10 +21,11 @@ import { api } from '../services/api';
 interface VideoLibraryPageProps {
   videos: SourceVideoItem[];
   onNavigate: (tab: string) => void;
+  onSelectVideo?: (id: string) => void;
   onRefresh: () => void;
 }
 
-export const VideoLibraryPage: React.FC<VideoLibraryPageProps> = ({ videos, onNavigate, onRefresh }) => {
+export const VideoLibraryPage: React.FC<VideoLibraryPageProps> = ({ videos, onNavigate, onSelectVideo, onRefresh }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   
@@ -193,8 +194,22 @@ export const VideoLibraryPage: React.FC<VideoLibraryPageProps> = ({ videos, onNa
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => onNavigate('clip-finder')}
-                      className="px-2.5 py-1 rounded bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 text-xs font-semibold border border-brand-500/20 flex items-center gap-1"
+                      onClick={() => {
+                        onSelectVideo?.(v.id);
+                        onNavigate('transcript');
+                      }}
+                      className="px-2 py-1 rounded bg-surface-lighter hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-medium flex items-center gap-1 transition-colors"
+                      title="View & Edit Transcript"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-brand-400" />
+                      <span>Transcribe</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        onSelectVideo?.(v.id);
+                        onNavigate('clip-finder');
+                      }}
+                      className="px-2.5 py-1 rounded bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 text-xs font-semibold border border-brand-500/20 flex items-center gap-1 transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>Find Clips</span>
