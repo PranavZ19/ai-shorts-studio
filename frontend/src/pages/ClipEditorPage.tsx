@@ -22,7 +22,8 @@ import {
   XCircle,
   CheckCircle2,
   Zap,
-  Share2
+  Share2,
+  Loader2
 } from 'lucide-react';
 import { ClipItem, SourceVideoItem } from '../types';
 import { api } from '../services/api';
@@ -50,6 +51,8 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
   // Playback state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
+  const [videoLoading, setVideoLoading] = useState<boolean>(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Editing Settings
@@ -97,8 +100,9 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
     setSelectedClip(clip);
     setStartTime(clip.start_time);
     setEndTime(clip.end_time);
-    setCurrentTime(0);
+    setCurrentTime(clip.has_rendered_video ? 0 : clip.start_time);
     setIsPlaying(false);
+    setVideoError(null);
     setRenderError(null);
     setRenderSuccess(!!clip.has_rendered_video);
 
@@ -236,17 +240,57 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
     }
   };
 
+  const sourceVideo = videos.find(v => v.id === selectedClip?.video_id);
+  const activeVideoSrc = selectedClip?.has_rendered_video
+    ? (selectedClip.stream_url || selectedClip.video_url || null)
+    : (sourceVideo?.preview_url || null);
+
+  useEffect(() => {
+    if (videoRef.current && !selectedClip?.has_rendered_video) {
+      videoRef.current.currentTime = startTime;
+      setCurrentTime(startTime);
+    }
+  }, [startTime, selectedClip?.id]);
+
   const togglePlay = () => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
+        setIsPlaying(false);
       } else {
-        videoRef.current.play();
+        if (!selectedClip?.has_rendered_video) {
+          const cur = videoRef.current.currentTime;
+          if (cur < startTime || cur >= endTime) {
+            videoRef.current.currentTime = startTime;
+          }
+        }
+        videoRef.current
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => setIsPlaying(false));
       }
-      setIsPlaying(!isPlaying);
-    } else {
-      setIsPlaying(!isPlaying);
     }
+  };
+
+  const formatCaptionText = () => {
+    const raw = selectedClip?.hook_summary || selectedClip?.title || "HOW TO GROW RAPIDLY IN 2026";
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length <= 4) {
+      return (
+        <>
+          {words.slice(0, -1).join(' ')}{' '}
+          <span style={{ color: highlightColor }}>{words[words.length - 1]}</span>
+        </>
+      );
+    }
+    const mid = Math.floor(words.length / 2);
+    return (
+      <>
+        {words.slice(0, mid).join(' ')}{' '}
+        <span style={{ color: highlightColor }}>{words.slice(mid, mid + 2).join(' ')}</span>{' '}
+        {words.slice(mid + 2).join(' ')}
+      </>
+    );
   };
 
   const formatSecs = (s: number) => {
@@ -314,47 +358,76 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
           <div className="lg:col-span-5 flex flex-col items-center bg-surface rounded-2xl p-6 border border-surface-border space-y-4">
             {/* Visual Canvas Simulator */}
             <div className="relative w-[280px] h-[498px] bg-black rounded-2xl overflow-hidden border-2 border-surface-border shadow-2xl flex items-center justify-center group">
-              {/* If real MP4 rendered, play real video */}
-              {selectedClip.has_rendered_video && selectedClip.video_url ? (
-                <video
-                  ref={videoRef}
-                  src={selectedClip.video_url}
-                  className="w-full h-full object-cover"
-                  onTimeUpdate={() => {
-                    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-                  }}
-                  onEnded={() => setIsPlaying(false)}
-                />
-              ) : (
-                /* Pre-render Simulated Canvas */
-                <div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black flex flex-col items-center justify-center p-4 text-center relative">
-                  {/* Subtle Grid */}
-                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px]" />
+              {activeVideoSrc ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    key={`${selectedClip.id}_${selectedClip.has_rendered_video ? 'rendered' : 'source'}`}
+                    src={activeVideoSrc}
+                    className="w-full h-full object-cover transition-all duration-300"
+                    style={{
+                      objectPosition: selectedClip.has_rendered_video
+                        ? 'center'
+                        : framingMode === 'auto_face'
+                        ? '50% 30%'
+                        : framingMode === 'left'
+                        ? 'left center'
+                        : framingMode === 'right'
+                        ? 'right center'
+                        : framingMode === 'manual'
+                        ? `${Math.round(manualPosition * 100)}% center`
+                        : 'center center'
+                    }}
+                    onLoadedMetadata={() => {
+                      if (videoRef.current && !selectedClip.has_rendered_video) {
+                        videoRef.current.currentTime = startTime;
+                      }
+                      setVideoLoading(false);
+                    }}
+                    onTimeUpdate={() => {
+                      if (videoRef.current) {
+                        const cur = videoRef.current.currentTime;
+                        setCurrentTime(cur);
+                        if (!selectedClip.has_rendered_video && cur >= endTime) {
+                          videoRef.current.pause();
+                          videoRef.current.currentTime = startTime;
+                          setIsPlaying(false);
+                        }
+                      }
+                    }}
+                    onWaiting={() => setVideoLoading(true)}
+                    onPlaying={() => {
+                      setVideoLoading(false);
+                      setIsPlaying(true);
+                    }}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => {
+                      setIsPlaying(false);
+                      if (!selectedClip.has_rendered_video && videoRef.current) {
+                        videoRef.current.currentTime = startTime;
+                      }
+                    }}
+                    onError={() => {
+                      setVideoLoading(false);
+                      setVideoError('Unable to load video stream for preview.');
+                    }}
+                  />
 
-                  {/* Face Tracker Simulated Anchor */}
-                  {framingMode === 'auto_face' ? (
-                    <div className="w-24 h-24 rounded-full bg-brand-500/15 border-2 border-dashed border-brand-400 flex flex-col items-center justify-center mb-6 animate-pulse">
-                      <Zap className="w-6 h-6 text-brand-400 mb-1" />
-                      <span className="text-[10px] font-bold text-brand-300 uppercase tracking-wider">AI Face</span>
-                    </div>
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-surface-lighter border border-surface-border flex items-center justify-center mb-6">
-                      <MoveHorizontal className="w-6 h-6 text-gray-400" />
+                  {/* Framing Overlay Guide for unrendered mode */}
+                  {!selectedClip.has_rendered_video && framingMode === 'auto_face' && (
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-2 border-brand-400/60 pointer-events-none flex items-center justify-center bg-brand-500/10 shadow-lg">
+                      <span className="text-[10px] font-bold text-brand-300 uppercase tracking-wider bg-black/70 px-2 py-0.5 rounded backdrop-blur-sm">AI Face Target</span>
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-400 font-medium z-10 px-4">
-                    {selectedClip.title}
-                  </div>
-
-                  {/* Live Animated Caption Simulation Overlay */}
+                  {/* Live Caption Overlay */}
                   {captionEnabled && (
                     <div
-                      className="absolute left-3 right-3 text-center pointer-events-none transition-all"
+                      className="absolute left-3 right-3 text-center pointer-events-none transition-all z-10"
                       style={{ bottom: `${100 - positionY}%` }}
                     >
                       <div
-                        className="inline-block px-3 py-1.5 rounded-lg font-black tracking-wide leading-tight shadow-lg"
+                        className="inline-block px-3 py-1.5 rounded-lg font-black tracking-wide leading-tight shadow-xl"
                         style={{
                           fontSize: `${Math.round(fontSize * 0.55)}px`,
                           color: textColor,
@@ -363,35 +436,53 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                           fontFamily: 'Segoe UI, Nirmala UI, sans-serif'
                         }}
                       >
-                        HOW TO <span style={{ color: highlightColor }}>GROW RAPIDLY</span> IN 2026
+                        {formatCaptionText()}
                       </div>
                     </div>
                   )}
+                </>
+              ) : (
+                /* Fallback if no video source is available */
+                <div className="w-full h-full bg-surface-lighter flex flex-col items-center justify-center p-6 text-center text-gray-400 space-y-2">
+                  <AlertCircle className="w-8 h-8 text-amber-400" />
+                  <div className="text-xs font-bold text-white">Video Source Missing</div>
+                  <p className="text-[11px]">Source video file is not accessible for this clip.</p>
                 </div>
               )}
 
               {/* Play / Pause Toggle Button */}
-              <button
-                onClick={togglePlay}
-                className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-transform hover:scale-105 shadow-xl"
-              >
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-              </button>
+              {activeVideoSrc && (
+                <button
+                  onClick={togglePlay}
+                  className={`absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:scale-105 shadow-xl ${
+                    isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+                  }`}
+                  title={isPlaying ? 'Pause' : 'Play Segment'}
+                >
+                  {videoLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-brand-400" />
+                  ) : isPlaying ? (
+                    <Pause className="w-5 h-5" />
+                  ) : (
+                    <Play className="w-5 h-5 ml-0.5" />
+                  )}
+                </button>
+              )}
 
               {/* Aspect Ratio Badge */}
-              <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono text-gray-300 border border-white/10">
+              <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono text-gray-300 border border-white/10 z-10">
                 {aspectRatio} (1080x1920)
               </div>
 
               {/* Render Status Badge */}
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 z-10">
                 {selectedClip.has_rendered_video ? (
-                  <span className="px-2 py-0.5 rounded bg-accent-emerald/80 text-[10px] font-bold text-white border border-accent-emerald">
+                  <span className="px-2 py-0.5 rounded bg-accent-emerald/80 text-[10px] font-bold text-white border border-accent-emerald shadow">
                     Rendered MP4
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded bg-brand-500/80 text-[10px] font-bold text-white">
-                    Preview Mode
+                  <span className="px-2 py-0.5 rounded bg-brand-500/80 text-[10px] font-bold text-white shadow">
+                    Live Source Preview
                   </span>
                 )}
               </div>
