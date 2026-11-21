@@ -1,0 +1,9 @@
+{
+  "name": "ai-shorts-studio-backend",
+  "version": "1.0.0",
+  "description": "AI Shorts Studio Python FastAPI Backend",
+  "scripts": {
+    "dev": ".venv\\Scripts\\python.exe run.py",
+    "start": ".venv\\Scripts\\python.exe run.py"
+  }
+}
