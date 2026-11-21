@@ -1,24 +1,52 @@
 import re
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
+from urllib.parse import urlparse, parse_qs
 import yt_dlp
 from app.config import settings
 
 YOUTUBE_REGEX = re.compile(
-    r'^(https?://)?(www\.|m\.)?(youtube\.com/(watch\?v=|shorts/|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})([&?].*)?$'
+    r'^(https?://)?(www\.|m\.)?(youtube\.com/(watch\?v=|shorts/|embed/|live/|v/)|youtu\.be/)([a-zA-Z0-9_-]{11})([&?].*)?$'
 )
 
 class YouTubeService:
     def validate_youtube_url(self, url: str) -> Tuple[bool, Optional[str]]:
-        """Validate if the provided string is a legitimate YouTube URL."""
+        """Validate if the provided string is a legitimate YouTube URL and extract video ID."""
         if not url or not isinstance(url, str):
             return False, "URL is required"
         url = url.strip()
+
+        # Normalize protocol if omitted
+        raw_url = url if url.startswith(('http://', 'https://')) else f'https://{url}'
+        try:
+            parsed = urlparse(raw_url)
+            netloc = parsed.netloc.lower()
+            if netloc.startswith('www.'):
+                netloc = netloc[4:]
+            elif netloc.startswith('m.'):
+                netloc = netloc[2:]
+
+            if netloc in ('youtube.com', 'music.youtube.com'):
+                if parsed.path == '/watch':
+                    qs = parse_qs(parsed.query)
+                    if 'v' in qs and qs['v'] and len(qs['v'][0]) == 11:
+                        return True, qs['v'][0]
+                match = re.search(r'^/(?:shorts|live|embed|v)/([a-zA-Z0-9_-]{11})', parsed.path)
+                if match:
+                    return True, match.group(1)
+            elif netloc == 'youtu.be':
+                match = re.search(r'^/([a-zA-Z0-9_-]{11})', parsed.path)
+                if match:
+                    return True, match.group(1)
+        except Exception:
+            pass
+
+        # Fallback to regex check
         match = YOUTUBE_REGEX.match(url)
-        if not match:
-            return False, "Invalid YouTube URL. Please provide a standard watch link or shorts URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)"
-        video_id = match.group(5)
-        return True, video_id
+        if match:
+            return True, match.group(5)
+
+        return False, "Invalid YouTube URL. Please provide a standard watch link or shorts URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)"
 
     def fetch_metadata(self, url: str) -> Dict[str, Any]:
         """Retrieve publicly available YouTube video metadata without downloading video stream."""
@@ -31,6 +59,12 @@ class YouTubeService:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            'socket_timeout': 15,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['web', 'mweb', 'android']
+                }
+            }
         }
 
         try:
@@ -92,6 +126,12 @@ class YouTubeService:
             'no_warnings': True,
             'merge_output_format': 'mp4',
             'ffmpeg_location': str(Path(settings.FFMPEG_BIN).parent),
+            'socket_timeout': 30,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['web', 'mweb', 'android']
+                }
+            }
         }
 
         try:
