@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -11,6 +11,9 @@ from app.models.source_video import SourceVideo
 from app.services.transcription_service import transcription_service
 
 router = APIRouter(prefix="/api/transcripts", tags=["Transcripts"])
+
+# In-memory real-time transcription progress tracker
+_active_transcription_jobs: Dict[str, Dict[str, Any]] = {}
 
 class TranscribeRequest(BaseModel):
     model_name: Optional[str] = "base"
@@ -68,6 +71,16 @@ def get_transcript_for_video(video_id: str, db: Session = Depends(get_db)):
         ]
     }
 
+@router.get("/video/{video_id}/progress")
+def get_transcription_progress(video_id: str):
+    """Retrieve real-time transcription progress percentage and status message."""
+    return _active_transcription_jobs.get(video_id, {
+        "status": "idle",
+        "progress_pct": 0,
+        "stage": "idle",
+        "message": ""
+    })
+
 @router.post("/video/{video_id}/transcribe")
 def transcribe_video_endpoint(
     video_id: str,
@@ -86,15 +99,37 @@ def transcribe_video_endpoint(
 
     video_path = Path(video.file_path)
 
+    _active_transcription_jobs[video_id] = {
+        "status": "running",
+        "progress_pct": 5,
+        "stage": "starting",
+        "message": "Initializing local speech pipeline..."
+    }
+
+    def on_progress(stage: str, pct: int, msg: str):
+        _active_transcription_jobs[video_id] = {
+            "status": "running",
+            "progress_pct": pct,
+            "stage": stage,
+            "message": msg
+        }
+
     try:
-        # Run local Faster-Whisper transcription
+        # Run local Faster-Whisper transcription with progress callback
         result = transcription_service.transcribe_video(
             video_path=video_path,
             model_name=data.model_name or "base",
             language=data.language if data.language != "auto" else None,
-            force_cpu=data.force_cpu or False
+            force_cpu=data.force_cpu or False,
+            progress_callback=on_progress
         )
     except Exception as e:
+        _active_transcription_jobs[video_id] = {
+            "status": "failed",
+            "progress_pct": 0,
+            "stage": "error",
+            "message": f"Transcription failed: {str(e)}"
+        }
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
     # Clean existing transcript if re-transcribing
@@ -134,6 +169,13 @@ def transcribe_video_endpoint(
 
     video.status = "transcribed"
     db.commit()
+
+    _active_transcription_jobs[video_id] = {
+        "status": "completed",
+        "progress_pct": 100,
+        "stage": "completed",
+        "message": "Transcription complete!"
+    }
 
     return {
         "success": True,

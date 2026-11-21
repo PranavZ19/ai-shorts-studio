@@ -207,6 +207,21 @@ export const api = {
     return res.json();
   },
 
+  async getTranscriptionProgress(videoId: string): Promise<{
+    status: string;
+    progress_pct: number;
+    stage: string;
+    message: string;
+  }> {
+    try {
+      const res = await fetch(`${API_BASE}/transcripts/video/${videoId}/progress`);
+      if (!res.ok) return { status: 'idle', progress_pct: 0, stage: 'idle', message: '' };
+      return res.json();
+    } catch {
+      return { status: 'idle', progress_pct: 0, stage: 'idle', message: '' };
+    }
+  },
+
   async updateTranscriptSegment(segmentId: string, text: string, speaker?: string): Promise<any> {
     const res = await fetch(`${API_BASE}/transcripts/segments/${segmentId}`, {
       method: 'PUT',

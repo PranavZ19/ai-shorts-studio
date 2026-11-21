@@ -41,6 +41,7 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [transcribeStatus, setTranscribeStatus] = useState<string>('');
+  const [transcribeProgress, setTranscribeProgress] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState<string>('base');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('auto');
   const [forceCpu, setForceCpu] = useState<boolean>(false);
@@ -86,15 +87,38 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
   const handleStartTranscribe = async () => {
     if (!currentVideoId) return;
     setIsTranscribing(true);
+    setTranscribeProgress(8);
     setTranscribeStatus('Extracting audio & loading Faster-Whisper...');
+
+    // Poll live transcription progress
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    pollInterval = setInterval(async () => {
+      try {
+        const prog = await api.getTranscriptionProgress(currentVideoId);
+        if (prog && prog.status === 'running') {
+          if (prog.progress_pct > 0) {
+            setTranscribeProgress(prog.progress_pct);
+          }
+          if (prog.message) {
+            setTranscribeStatus(prog.message);
+          }
+        }
+      } catch {
+        // Ignore transient poll error
+      }
+    }, 600);
 
     try {
       await api.transcribeVideo(currentVideoId, selectedModel, selectedLanguage, forceCpu);
+      setTranscribeProgress(100);
+      setTranscribeStatus('Finalizing transcript...');
       await fetchTranscript(currentVideoId);
     } catch (err: any) {
       alert(err.message || 'Transcription failed');
     } finally {
+      if (pollInterval) clearInterval(pollInterval);
       setIsTranscribing(false);
+      setTranscribeProgress(0);
       setTranscribeStatus('');
     }
   };
@@ -281,7 +305,7 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
                 {isTranscribing ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>{transcribeStatus || 'Transcribing Speech...'}</span>
+                    <span>Transcribing... {transcribeProgress}%</span>
                   </>
                 ) : (
                   <>
@@ -290,6 +314,22 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
                   </>
                 )}
               </button>
+
+              {/* Progress percentage bar on left control */}
+              {isTranscribing && (
+                <div className="space-y-1.5 p-2.5 rounded-xl bg-surface-lighter/70 border border-brand-500/20">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-gray-300 font-medium truncate max-w-[190px]">{transcribeStatus || 'Transcribing speech...'}</span>
+                    <span className="text-brand-400 font-mono font-bold">{transcribeProgress}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-surface-border rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-brand-600 via-accent-purple to-brand-400 transition-all duration-300 rounded-full"
+                      style={{ width: `${Math.max(5, transcribeProgress)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Subtitle Export Buttons */}
               {transcriptData?.found && (
@@ -338,8 +378,65 @@ export const TranscriptPage: React.FC<TranscriptPageProps> = ({
             )}
           </div>
 
-          {/* Transcript List */}
-          {transcriptData?.found ? (
+          {/* Transcript List or Live Progress State */}
+          {isTranscribing ? (
+            <div className="bg-surface rounded-xl p-8 border border-brand-500/30 text-center space-y-6 shadow-lg shadow-brand-500/5">
+              <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-4 border-brand-500/20" />
+                <div
+                  className="absolute inset-0 rounded-full border-4 border-brand-400 border-t-transparent animate-spin"
+                  style={{ animationDuration: '1.8s' }}
+                />
+                <div className="text-center">
+                  <span className="text-3xl font-black text-white font-mono">{transcribeProgress}%</span>
+                  <span className="block text-[9px] text-brand-300 font-bold uppercase tracking-wider">Progress</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <h3 className="text-base font-bold text-white flex items-center justify-center gap-2">
+                  <Sparkles className="w-4 h-4 text-brand-400" />
+                  Transcribing Speech with Faster-Whisper
+                </h3>
+                <p className="text-xs text-brand-300 font-medium">
+                  {transcribeStatus || 'Processing audio stream...'}
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Transcribing speech locally with word-level timestamps on your graphics card.
+                </p>
+              </div>
+
+              {/* Wide Progress Bar */}
+              <div className="max-w-md mx-auto space-y-1.5">
+                <div className="w-full h-3 bg-surface-lighter rounded-full overflow-hidden border border-surface-border">
+                  <div
+                    className="h-full bg-gradient-to-r from-brand-600 via-accent-purple to-brand-400 transition-all duration-300 rounded-full shadow"
+                    style={{ width: `${Math.max(5, transcribeProgress)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-400 px-1">
+                  <span>{transcribeProgress < 20 ? 'Audio extraction' : transcribeProgress < 35 ? 'Model setup' : transcribeProgress < 90 ? 'Word-level alignment' : 'Finalizing transcript'}</span>
+                  <span className="font-mono font-bold text-brand-400">{transcribeProgress}% completed</span>
+                </div>
+              </div>
+
+              {/* Hardware & Model Badges */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <span className="text-[11px] bg-surface-lighter border border-surface-border text-gray-300 px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-brand-400" />
+                  {forceCpu ? 'CPU Fallback' : 'NVIDIA CUDA GPU'}
+                </span>
+                <span className="text-[11px] bg-surface-lighter border border-surface-border text-gray-300 px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-brand-400" />
+                  Language: {selectedLanguage === 'auto' ? 'Auto-Detect' : selectedLanguage.toUpperCase()}
+                </span>
+                <span className="text-[11px] bg-surface-lighter border border-surface-border text-gray-300 px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-brand-400" />
+                  Model: {selectedModel}
+                </span>
+              </div>
+            </div>
+          ) : transcriptData?.found ? (
             <div className="bg-surface rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden">
               {filteredSegments.map((seg: any) => {
                 const isActive = currentTime >= seg.start_time && currentTime <= seg.end_time;
