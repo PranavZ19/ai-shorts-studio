@@ -897,5 +897,54 @@ export const api = {
 
   getBackupDownloadUrl(filename: string): string {
     return `${API_BASE}/settings/backups/${encodeURIComponent(filename)}/download`;
+  },
+
+  // AI Video Editor (Natural Language Prompt Studio)
+  async sendAIEditorCommand(payload: {
+    prompt: string;
+    video_id?: string;
+    clip_id?: string;
+    current_config?: any;
+  }): Promise<{
+    success: boolean;
+    reply: string;
+    actions: string[];
+    changes: Record<string, any>;
+    config: Record<string, any>;
+  }> {
+    const res = await fetch(`${API_BASE}/ai-editor/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Editor command failed' }));
+      throw new Error(err.detail || 'Editor command failed');
+    }
+    return res.json();
+  },
+
+  async renderAIEditorVideo(payload: {
+    video_id?: string;
+    clip_id?: string;
+    config: any;
+  }): Promise<{
+    success: boolean;
+    output_path: string;
+    filename: string;
+    file_size_bytes: number;
+    video_url: string;
+    config_applied: any;
+  }> {
+    const res = await fetch(`${API_BASE}/ai-editor/render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Video render failed' }));
+      throw new Error(err.detail || 'Video render failed');
+    }
+    return res.json();
   }
 };

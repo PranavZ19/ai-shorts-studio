@@ -8,6 +8,7 @@ import { VideoLibraryPage } from './pages/VideoLibraryPage';
 import { ClipFinderPage } from './pages/ClipFinderPage';
 import { TranscriptPage } from './pages/TranscriptPage';
 import { ClipEditorPage } from './pages/ClipEditorPage';
+import { AIVideoEditorPage } from './pages/AIVideoEditorPage';
 import { GeneratedShortsPage } from './pages/GeneratedShortsPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { PublishingPage } from './pages/PublishingPage';
@@ -141,6 +142,15 @@ export function App() {
               videos={videos}
               selectedClipId={selectedClipId}
               onSelectClip={(id) => setSelectedClipId(id)}
+              onRefresh={fetchAllData}
+              onNavigate={setCurrentTab}
+            />
+          )}
+
+          {currentTab === 'ai-video-editor' && (
+            <AIVideoEditorPage
+              videos={videos}
+              clips={clips}
               onRefresh={fetchAllData}
               onNavigate={setCurrentTab}
             />

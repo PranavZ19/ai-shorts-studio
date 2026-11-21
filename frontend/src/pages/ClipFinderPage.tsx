@@ -67,6 +67,13 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({
   const [editTitle, setEditTitle] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
+  // Calculated duration and clip capacity
+  const activeVideo = videos.find(v => v.id === selectedVideoId);
+  const videoDuration = activeVideo ? (activeVideo.duration || (activeVideo as any).duration_seconds || 0) : 0;
+  const maxPossibleClips = videoDuration > 0 ? Math.max(1, Math.floor(videoDuration / 20)) : 15;
+  const clipPresets = [3, 5, 8, 12, maxPossibleClips]
+    .filter((count, idx, arr) => count <= maxPossibleClips && arr.indexOf(count) === idx);
+
   useEffect(() => {
     loadVideosAndEngine();
   }, []);
@@ -345,9 +352,81 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({
           </div>
         </div>
 
-        {/* Engine mode options */}
-        <div className="flex flex-wrap items-center justify-between text-xs text-gray-400 pt-2 border-t border-surface-border/60">
-          <div className="flex items-center gap-4">
+        {/* Duration Calculation & Custom Clip Count Selector */}
+        <div className="pt-3 border-t border-surface-border/60 space-y-3">
+          {/* Video Duration & Max Clip Capacity Info Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-surface-lighter/80 border border-surface-border text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-accent-emerald animate-pulse" />
+              <span className="text-gray-400">Video Duration:</span>
+              <span className="font-mono text-white font-bold">
+                {videoDuration > 0
+                  ? `${Math.floor(videoDuration / 60)}m ${Math.round(videoDuration % 60)}s (${Math.round(videoDuration)}s)`
+                  : 'Select a video'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">Max Capacity:</span>
+              <span className="px-2 py-0.5 rounded bg-brand-500/20 border border-brand-500/40 text-brand-300 font-bold">
+                Up to {maxPossibleClips} clips possible
+              </span>
+            </div>
+          </div>
+
+          {/* Controls: Preset Pills, Custom Number Input, Range Slider */}
+          <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-gray-300">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-gray-400 text-xs font-medium">Clips to extract:</span>
+              {clipPresets.map(count => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setTargetCount(count)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    targetCount === count
+                      ? 'bg-brand-500 text-white border-brand-400 shadow-md shadow-brand-500/20'
+                      : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {count === maxPossibleClips ? `Max (${count})` : `${count} clips`}
+                </button>
+              ))}
+
+              {/* Custom Number Input */}
+              <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-surface-border">
+                <span className="text-gray-400 text-[11px]">Custom:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={Math.max(50, maxPossibleClips)}
+                  value={targetCount}
+                  onChange={e => {
+                    const val = parseInt(e.target.value) || 1;
+                    setTargetCount(Math.max(1, Math.min(maxPossibleClips * 2, val)));
+                  }}
+                  className="w-14 bg-surface border border-surface-border focus:border-brand-500 rounded px-2 py-1 text-xs text-white text-center font-bold outline-none"
+                />
+                <span className="text-gray-400 text-[11px]">clips</span>
+              </div>
+            </div>
+
+            {/* Range Slider */}
+            <div className="flex items-center gap-2 min-w-[200px]">
+              <span className="text-[10px] text-gray-500">1</span>
+              <input
+                type="range"
+                min={1}
+                max={Math.max(1, maxPossibleClips)}
+                value={Math.min(targetCount, maxPossibleClips)}
+                onChange={e => setTargetCount(parseInt(e.target.value))}
+                className="flex-1 accent-brand-500 cursor-pointer h-1.5 bg-surface rounded-lg"
+              />
+              <span className="text-[10px] text-gray-500">{maxPossibleClips}</span>
+            </div>
+          </div>
+
+          {/* Engine toggle */}
+          <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -357,23 +436,9 @@ export const ClipFinderPage: React.FC<ClipFinderPageProps> = ({
               />
               <span>Force Instant Rule-Based Heuristics (Bypass LLM)</span>
             </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span>Clips to extract:</span>
-            {[3, 5, 8].map(count => (
-              <button
-                key={count}
-                onClick={() => setTargetCount(count)}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all ${
-                  targetCount === count
-                    ? 'bg-brand-500/20 border-brand-500 text-brand-300'
-                    : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
-                }`}
-              >
-                {count} clips
-              </button>
-            ))}
+            <span className="text-[11px] text-gray-500">
+              Generating {targetCount} high-retention moments from speech
+            </span>
           </div>
         </div>
 

@@ -14,7 +14,8 @@ import {
   Cpu,
   HardDrive,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Wand2
 } from 'lucide-react';
 import { HardwareStatus } from '../../types';
 
@@ -32,6 +33,7 @@ const navItems = [
   { id: 'clip-finder', label: 'AI Clip Finder', icon: Sparkles },
   { id: 'transcript', label: 'Transcript', icon: FileText },
   { id: 'clip-editor', label: 'Clip Editor', icon: Sliders },
+  { id: 'ai-video-editor', label: 'AI Video Editor', icon: Wand2, highlight: true },
   { id: 'generated-shorts', label: 'Generated Shorts', icon: PlaySquare },
   { id: 'downloads', label: 'Downloads', icon: Download },
   { id: 'publishing', label: 'Publishing Kit', icon: Share2 },

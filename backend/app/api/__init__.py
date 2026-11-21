@@ -9,6 +9,7 @@ from app.api.analytics import router as analytics_router
 from app.api.settings import router as settings_router
 from app.api.strategy import router as strategy_router
 from app.api.publishing_kits import router as publishing_kits_router
+from app.api.ai_editor import router as ai_editor_router
 
 __all__ = [
     "hardware_router",
@@ -21,5 +22,6 @@ __all__ = [
     "analytics_router",
     "settings_router",
     "strategy_router",
-    "publishing_kits_router"
+    "publishing_kits_router",
+    "ai_editor_router"
 ]

@@ -16,7 +16,8 @@ from app.api import (
     analytics_router,
     settings_router,
     strategy_router,
-    publishing_kits_router
+    publishing_kits_router,
+    ai_editor_router
 )
 
 # Initialize SQLite database tables and migrations
@@ -82,6 +83,7 @@ app.include_router(analytics_router)
 app.include_router(settings_router)
 app.include_router(strategy_router)
 app.include_router(publishing_kits_router)
+app.include_router(ai_editor_router)
 
 @app.get("/health")
 @app.get("/api/health")
