@@ -99,6 +99,19 @@ class TestCopilotService(unittest.TestCase):
         self.assertTrue(res["success"])
         self.assertEqual(res["edit_config"]["excluded_phrases"], [])
 
+    def test_process_command_remove_white_and_yellow_text(self):
+        clip = self._create_mock_clip()
+        res = self.copilot.process_command(clip, "I want to remove the text in white and yellow", self.db)
+        self.assertTrue(res["success"])
+        self.assertFalse(res["edit_config"]["caption_enabled"])
+        self.assertIn("Removed white and yellow text overlay from the screen", res["actions"])
+
+    def test_process_command_remove_till_bro_why(self):
+        clip = self._create_mock_clip()
+        res = self.copilot.process_command(clip, "I don't want the text on the screen which is that's enough why? etc till bro why?", self.db)
+        self.assertTrue(res["success"])
+        self.assertFalse(res["edit_config"]["caption_enabled"])
+
 
 if __name__ == "__main__":
     unittest.main()

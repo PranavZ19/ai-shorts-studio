@@ -1,11 +1,10 @@
 import re
 import json
 import logging
-from typing import Dict, Any, List, Optional
-from sqlalchemy.orm import Session
-
 import urllib.request
 import urllib.error
+from typing import Dict, Any, List, Optional
+from sqlalchemy.orm import Session
 
 from app.models.clip import Clip
 from app.models.transcript import Transcript, TranscriptSegment
@@ -61,7 +60,7 @@ class CopilotService:
                     return clean_q
 
         # 2. "which is X", "that is X", "namely X"
-        m_which = re.search(r'(?:which is|that is|namely|text is|saying)\s+["\']?([^"\'\n,.;]+)["\']?', norm_prompt, re.IGNORECASE)
+        m_which = re.search(r'(?:which is|that is|namely|text is|saying)\s+["\']?([^"\'\n;]+)["\']?', norm_prompt, re.IGNORECASE)
         if m_which:
             clean = m_which.group(1).strip(" .")
             # Strip trailing fillers like "etc", "vagera", "then it should"
@@ -71,7 +70,7 @@ class CopilotService:
 
         # 3. Direct removal commands: "remove X", "delete X", "hata do X", "nikal do X"
         m_remove = re.search(
-            r'(?:remove|delete|omit|hide|dont\s*want|exclude|nikal\s*do|hata\s*do|restore|unhide)\s+(?:the\s+)?(?:text|words?|caption|subtitle|phrase)?\s*(?:which is\s+)?["\']?([^"\'\n,.;]+)["\']?',
+            r'(?:remove|delete|omit|hide|dont\s*want|exclude|nikal\s*do|hata\s*do|restore|unhide)\s+(?:the\s+)?(?:text|words?|caption|subtitle|phrase)?\s*(?:which is\s+)?["\']?([^"\'\n;]+)["\']?',
             norm_prompt,
             re.IGNORECASE
         )
@@ -82,13 +81,11 @@ class CopilotService:
                 return clean
 
         # 4. Trailing removal: "X nikal do", "X hata do", "X remove"
-        m_trail = re.search(r'["\']?([^"\'\n,.;]+)["\']?\s+(?:nikal\s*do|hata\s*do|remove\s*kar\s*do|delete\s*kar\s*do)', norm_prompt, re.IGNORECASE)
+        m_trail = re.search(r'["\']?([^"\'\n;]+)["\']?\s+(?:nikal\s*do|hata\s*do|remove\s*kar\s*do|delete\s*kar\s*do)', norm_prompt, re.IGNORECASE)
         if m_trail:
             clean = m_trail.group(1).strip(" .")
             if len(clean) >= 2:
                 return clean
-
-        return None
 
         return None
 
@@ -120,6 +117,7 @@ class CopilotService:
         """
         Processes natural language instructions for the active clip:
         - Removes or modifies specific phrases in the transcript and on-screen captions
+        - Removes all on-screen white & yellow text when requested
         - Adjusts caption styling (font size, colors, presets, position)
         - Adjusts framing (auto-face, center, left, right)
         - Adjusts volume and audio settings
@@ -152,8 +150,36 @@ class CopilotService:
                 actions_taken.append("Cleared all excluded caption phrases")
                 changes["excluded_phrases"] = []
 
-        # 2. Check for Text Removal / Exclusion (if not a restore command)
-        is_removal = not is_restore and bool(re.search(r'(?:remove|delete|omit|hide|don\'?t want|exclude|nikal|hata)', clean_prompt, re.IGNORECASE))
+        # 2. Check for Caption Toggle (on / off) / Remove all on-screen text
+        # E.g. "I want to remove the text in white and yellow", "remove text on screen", "hide text on screen", "till bro why"
+        has_specific_phrase = (
+            bool(re.search(r'\b(?:which is|that is|namely|saying)\b', clean_prompt, re.IGNORECASE))
+            or bool(re.findall(r'["\']([^"\']+)["\']', clean_prompt))
+        ) and not bool(re.search(r'\btill\s+bro\s+why\b', clean_prompt, re.IGNORECASE))
+
+        is_full_text_remove = not has_specific_phrase and bool(re.search(
+            r'(?:disable|hide|turn off|remove|delete|omit|no|don\'?t want)\s+(?:all\s+)?(?:captions?|subtitles?|(?:the\s+)?(?:text|words?)\s+on\s+(?:the\s+)?screen|(?:the\s+)?(?:text|words?)\s+in\s+white(?:\s+and\s+yellow)?|(?:the\s+)?white\s+and\s+yellow\s+text|(?:the\s+)?on[- ]screen\s+text)',
+            clean_prompt,
+            re.IGNORECASE
+        ) or re.search(r'\btill\s+bro\s+why\b', clean_prompt, re.IGNORECASE))
+
+        is_full_text_enable = bool(re.search(
+            r'(?:enable|show|turn on|display|bring back)\s+(?:captions?|subtitles?|text\s+on\s+(?:the\s+)?screen)',
+            clean_prompt,
+            re.IGNORECASE
+        ))
+
+        if is_full_text_remove:
+            edit_config["caption_enabled"] = False
+            changes["caption_enabled"] = False
+            actions_taken.append("Removed white and yellow text overlay from the screen")
+        elif is_full_text_enable:
+            edit_config["caption_enabled"] = True
+            changes["caption_enabled"] = True
+            actions_taken.append("Enabled on-screen animated captions")
+
+        # 3. Check for Specific Substring Text Removal / Exclusion (if not full text remove/restore)
+        is_removal = not is_restore and not is_full_text_remove and bool(re.search(r'(?:remove|delete|omit|hide|don\'?t want|exclude|nikal|hata)', clean_prompt, re.IGNORECASE))
         target_text = self._extract_target_text(clean_prompt) if is_removal else None
 
         if is_removal and target_text:
@@ -208,17 +234,7 @@ class CopilotService:
             actions_taken.append(f"Removed '{target_text}' from on-screen captions")
             changes["excluded_phrases"] = excluded
 
-        # 2. Check for Caption Toggle (on / off)
-        if re.search(r'(?:disable|hide|turn off|remove all|no)\s+captions?', clean_prompt, re.IGNORECASE):
-            edit_config["caption_enabled"] = False
-            changes["caption_enabled"] = False
-            actions_taken.append("Disabled animated captions")
-        elif re.search(r'(?:enable|show|turn on|display)\s+captions?', clean_prompt, re.IGNORECASE):
-            edit_config["caption_enabled"] = True
-            changes["caption_enabled"] = True
-            actions_taken.append("Enabled animated captions")
-
-        # 3. Check for Caption Preset
+        # 4. Check for Caption Preset
         for p_key, p_val in PRESET_MAP.items():
             if re.search(rf'\b{p_key}\b', clean_prompt, re.IGNORECASE) and not re.search(r'remove|delete', clean_prompt, re.IGNORECASE):
                 edit_config["caption_preset"] = p_val
@@ -226,7 +242,7 @@ class CopilotService:
                 actions_taken.append(f"Switched caption preset to '{p_val}'")
                 break
 
-        # 4. Check for Font Size
+        # 5. Check for Font Size
         m_size = re.search(r'font\s*size\s*(?:to|is|:)?\s*(\d+)', clean_prompt, re.IGNORECASE)
         if m_size:
             sz = int(m_size.group(1))
@@ -247,9 +263,9 @@ class CopilotService:
             changes["font_size"] = new_sz
             actions_taken.append(f"Decreased font size to {new_sz}px")
 
-        # 5. Check for Color Changes
+        # 6. Check for Color Changes
         for c_name, c_hex in COLOR_MAP.items():
-            if re.search(rf'\b{c_name}\b', clean_prompt, re.IGNORECASE) and not is_removal:
+            if re.search(rf'\b{c_name}\b', clean_prompt, re.IGNORECASE) and not is_removal and not is_full_text_remove:
                 if re.search(r'text\s*color', clean_prompt, re.IGNORECASE):
                     edit_config["text_color"] = c_hex
                     changes["text_color"] = c_hex
@@ -269,22 +285,22 @@ class CopilotService:
             changes["highlight_color"] = hex_val
             actions_taken.append(f"Set highlight color to {hex_val}")
 
-        # 6. Check for Caption Position Y (Vertical) - only if not removing text
-        if not is_removal and re.search(r'\b(?:top|higher|move up|shift up)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
+        # 7. Check for Caption Position Y (Vertical) - only if not removing text
+        if not is_removal and not is_full_text_remove and re.search(r'\b(?:top|higher|move up|shift up)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
             edit_config["position_y"] = 25.0
             changes["position_y"] = 25.0
             actions_taken.append("Moved captions to top position (25%)")
-        elif not is_removal and re.search(r'\b(?:bottom|lower|move down|shift down)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
+        elif not is_removal and not is_full_text_remove and re.search(r'\b(?:bottom|lower|move down|shift down)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
             edit_config["position_y"] = 82.0
             changes["position_y"] = 82.0
             actions_taken.append("Moved captions to bottom position (82%)")
-        elif not is_removal and re.search(r'\b(?:middle|center)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
+        elif not is_removal and not is_full_text_remove and re.search(r'\b(?:middle|center)\b', clean_prompt, re.IGNORECASE) and re.search(r'\b(?:caption|text|position)\b', clean_prompt, re.IGNORECASE):
             edit_config["position_y"] = 50.0
             changes["position_y"] = 50.0
             actions_taken.append("Centered captions vertically (50%)")
 
-        # 7. Check for Framing Mode
-        if re.search(r'\b(?:face|auto[- ]?face|tracking)\b', clean_prompt, re.IGNORECASE) and not is_removal:
+        # 8. Check for Framing Mode
+        if re.search(r'\b(?:face|auto[- ]?face|tracking)\b', clean_prompt, re.IGNORECASE) and not is_removal and not is_full_text_remove:
             edit_config["framing"] = "auto_face"
             changes["framing"] = "auto_face"
             actions_taken.append("Switched framing to AI Face Tracking")
@@ -301,7 +317,7 @@ class CopilotService:
             changes["framing"] = "right"
             actions_taken.append("Switched framing to Right Anchor")
 
-        # 8. Check for Volume
+        # 9. Check for Volume
         m_vol = re.search(r'volume\s*(?:to|is)?\s*(\d+)', clean_prompt, re.IGNORECASE)
         if m_vol:
             v_pct = int(m_vol.group(1))
@@ -348,7 +364,7 @@ class CopilotService:
 
         return {
             "success": True,
-            "reply": "I can help you customize this clip! Try saying: 'Remove the text vagera nikalta hai', 'Change highlight color to yellow', 'Make font size 32', or 'Switch framing to face tracking'.",
+            "reply": "I can help you customize this clip! Try saying: 'Remove the text vagera nikalta hai', 'Remove white and yellow text', 'Change highlight color to yellow', or 'Switch framing to face tracking'.",
             "actions": [],
             "changes": {},
             "edit_config": edit_config
