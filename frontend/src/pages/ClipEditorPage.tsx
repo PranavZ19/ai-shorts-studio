@@ -508,14 +508,14 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                       objectPosition: selectedClip.has_rendered_video
                         ? 'center'
                         : framingMode === 'auto_face'
-                        ? '50% 30%'
-                        : framingMode === 'left'
-                        ? 'left center'
-                        : framingMode === 'right'
-                        ? 'right center'
-                        : framingMode === 'manual'
-                        ? `${Math.round(manualPosition * 100)}% center`
-                        : 'center center'
+                          ? '50% 30%'
+                          : framingMode === 'left'
+                            ? 'left center'
+                            : framingMode === 'right'
+                              ? 'right center'
+                              : framingMode === 'manual'
+                                ? `${Math.round(manualPosition * 100)}% center`
+                                : 'center center'
                     }}
                     onLoadedMetadata={() => {
                       if (videoRef.current && !selectedClip.has_rendered_video) {
@@ -593,9 +593,8 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
               {activeVideoSrc && (
                 <button
                   onClick={togglePlay}
-                  className={`absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:scale-105 shadow-xl ${
-                    isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
-                  }`}
+                  className={`absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:scale-105 shadow-xl ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+                    }`}
                   title={isPlaying ? 'Pause' : 'Play Segment'}
                 >
                   {videoLoading ? (
@@ -786,11 +785,10 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
             <button
               onClick={handleStartRender}
               disabled={isRendering}
-              className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl transition-all ${
-                isRendering
-                  ? 'bg-brand-600/50 text-white cursor-not-allowed'
-                  : 'bg-gradient-to-r from-brand-600 to-accent-purple hover:scale-[1.01] text-white shadow-brand-500/20'
-              }`}
+              className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xl transition-all ${isRendering
+                ? 'bg-brand-600/50 text-white cursor-not-allowed'
+                : 'bg-gradient-to-r from-brand-600 to-accent-purple hover:scale-[1.01] text-white shadow-brand-500/20'
+                }`}
             >
               {isRendering ? (
                 <>
@@ -851,11 +849,10 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2 leading-relaxed ${
-                        msg.sender === 'user'
-                          ? 'bg-brand-600 text-white rounded-br-sm'
-                          : 'bg-surface border border-surface-border text-gray-200 rounded-bl-sm shadow'
-                      }`}
+                      className={`max-w-[85%] rounded-2xl px-3.5 py-2 leading-relaxed ${msg.sender === 'user'
+                        ? 'bg-brand-600 text-white rounded-br-sm'
+                        : 'bg-surface border border-surface-border text-gray-200 rounded-bl-sm shadow'
+                        }`}
                     >
                       {msg.text}
                     </div>
@@ -1066,11 +1063,10 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                     <button
                       key={ratio.id}
                       onClick={() => setAspectRatio(ratio.id)}
-                      className={`p-2.5 rounded-lg border text-left transition-all ${
-                        aspectRatio === ratio.id
-                          ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm'
-                          : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
-                      }`}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${aspectRatio === ratio.id
+                        ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm'
+                        : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
+                        }`}
                     >
                       <div className="text-xs font-bold">{ratio.label}</div>
                       <div className="text-[10px] text-gray-500">{ratio.desc}</div>
@@ -1091,11 +1087,10 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                     <button
                       key={mode.id}
                       onClick={() => setFramingMode(mode.id)}
-                      className={`p-2.5 rounded-lg border text-left transition-all ${
-                        framingMode === mode.id
-                          ? 'bg-accent-purple/15 border-accent-purple text-white shadow-sm'
-                          : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
-                      }`}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${framingMode === mode.id
+                        ? 'bg-accent-purple/15 border-accent-purple text-white shadow-sm'
+                        : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
+                        }`}
                     >
                       <div className="text-xs font-bold">{mode.label}</div>
                       <div className="text-[10px] text-gray-500">{mode.desc}</div>
@@ -1163,11 +1158,10 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
                         <button
                           key={preset.id}
                           onClick={() => handlePresetSelect(preset.id)}
-                          className={`p-2 rounded-lg border text-left transition-all ${
-                            captionPreset === preset.id
-                              ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm'
-                              : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
-                          }`}
+                          className={`p-2 rounded-lg border text-left transition-all ${captionPreset === preset.id
+                            ? 'bg-brand-500/15 border-brand-500 text-white shadow-sm'
+                            : 'bg-surface-lighter border-surface-border text-gray-400 hover:text-white'
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold">{preset.label}</span>
