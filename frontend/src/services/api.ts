@@ -361,6 +361,26 @@ export const api = {
     return res.json();
   },
 
+  async copilotClip(clipId: string, prompt: string): Promise<{
+    success: boolean;
+    reply: string;
+    actions: string[];
+    changes: any;
+    edit_config: any;
+    clip: any;
+  }> {
+    const res = await fetch(`${API_BASE}/clips/${clipId}/copilot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Copilot command failed' }));
+      throw new Error(err.detail || 'Copilot command failed');
+    }
+    return res.json();
+  },
+
   async deleteClip(clipId: string, deleteMedia = true): Promise<any> {
     const res = await fetch(`${API_BASE}/clips/${clipId}?delete_media=${deleteMedia}`, {
       method: 'DELETE'

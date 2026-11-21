@@ -136,7 +136,13 @@ class VideoRenderService:
             if progress_callback:
                 progress_callback("generating_captions", 20, "Generating word-synchronized animated captions...")
 
-            clip_words = caption_service.extract_clip_words(transcript_segments, start_time, end_time)
+            excluded_phrases = edit_config.get("excluded_phrases", [])
+            clip_words = caption_service.extract_clip_words(
+                transcript_segments,
+                start_time,
+                end_time,
+                excluded_phrases=excluded_phrases
+            )
             if clip_words:
                 caption_service.generate_ass_subtitle(
                     words=clip_words,

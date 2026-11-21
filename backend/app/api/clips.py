@@ -16,6 +16,7 @@ from app.models.job import ProcessingJob
 from app.services.clip_finder_service import ClipFinderService
 from app.services.caption_service import CaptionService
 from app.services.video_render_service import video_render_service
+from app.services.copilot_service import copilot_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ router = APIRouter(prefix="/api/clips", tags=["Clips"])
 
 # In-memory live rendering progress tracker
 _active_render_jobs: Dict[str, Dict[str, Any]] = {}
+
+class CopilotPromptRequest(BaseModel):
+    prompt: str
 
 class AnalyzeClipsRequest(BaseModel):
     video_id: str
@@ -358,6 +362,20 @@ def update_clip(clip_id: str, data: ClipEditConfigUpdate, db: Session = Depends(
     
     db.commit()
     return {"success": True, "clip_id": c.id, "clip": _serialize_clip(c)}
+
+@router.post("/{clip_id}/copilot")
+def copilot_clip_endpoint(clip_id: str, data: CopilotPromptRequest, db: Session = Depends(get_db)):
+    """Natural language AI copilot to modify captions, remove words, and adjust clip parameters."""
+    c = db.query(Clip).filter(Clip.id == clip_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Clip not found")
+
+    if not data.prompt or not data.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt is required")
+
+    result = copilot_service.process_command(clip=c, prompt=data.prompt, db=db)
+    result["clip"] = _serialize_clip(c)
+    return result
 
 @router.delete("/{clip_id}")
 def delete_clip(

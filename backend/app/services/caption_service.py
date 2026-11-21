@@ -133,11 +133,13 @@ class CaptionService:
         self,
         segments: List[Dict[str, Any]],
         start_time: float,
-        end_time: float
+        end_time: float,
+        excluded_phrases: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract word timestamps falling within the clip boundary [start_time, end_time].
         Normalizes timestamps relative to clip start (t = 0.0s).
+        Filters out any words or phrases specified in excluded_phrases.
         """
         words = []
         for seg in segments:
@@ -172,6 +174,18 @@ class CaptionService:
                             "start": s_rel + (i * w_len),
                             "end": s_rel + ((i + 1) * w_len)
                         })
+
+        # Filter out excluded words/phrases if specified
+        if excluded_phrases:
+            clean_excluded_tokens = set()
+            for ep in excluded_phrases:
+                for t in ep.lower().split():
+                    clean_excluded_tokens.add(t.strip(" ,.-'\"?!"))
+            if clean_excluded_tokens:
+                words = [
+                    w for w in words
+                    if w.get("word", "").lower().strip(" ,.-'\"?!") not in clean_excluded_tokens
+                ]
 
         return words
 

@@ -23,7 +23,10 @@ import {
   CheckCircle2,
   Zap,
   Share2,
-  Loader2
+  Loader2,
+  Send,
+  Bot,
+  Trash2
 } from 'lucide-react';
 import { ClipItem, SourceVideoItem } from '../types';
 import { api } from '../services/api';
@@ -81,6 +84,83 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
   const [renderError, setRenderError] = useState<string | null>(null);
   const [renderSuccess, setRenderSuccess] = useState<boolean>(false);
   const pollTimerRef = useRef<any>(null);
+
+  // AI Copilot Chat state
+  interface ChatMessage {
+    id: string;
+    sender: 'user' | 'assistant';
+    text: string;
+    timestamp: Date;
+    actions?: string[];
+  }
+
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init_1',
+      sender: 'assistant',
+      text: "👋 I'm your AI Video Copilot. Tell me to remove specific text from on-screen captions (e.g. \"remove 'vagera nikalta hai'\"), change colors, font size, or framing!",
+      timestamp: new Date()
+    }
+  ]);
+  const [copilotInput, setCopilotInput] = useState<string>('');
+  const [isCopilotThinking, setIsCopilotThinking] = useState<boolean>(false);
+
+  const handleSendCopilotCommand = async (customPrompt?: string) => {
+    const textToSend = (customPrompt || copilotInput).trim();
+    if (!textToSend || !selectedClip || isCopilotThinking) return;
+
+    const userMsg: ChatMessage = {
+      id: `u_${Date.now()}`,
+      sender: 'user',
+      text: textToSend,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, userMsg]);
+    setCopilotInput('');
+    setIsCopilotThinking(true);
+
+    try {
+      const res = await api.copilotClip(selectedClip.id, textToSend);
+
+      // Apply changes to UI state
+      if (res.changes) {
+        if (res.changes.font_size) setFontSize(res.changes.font_size);
+        if (res.changes.highlight_color) setHighlightColor(res.changes.highlight_color);
+        if (res.changes.text_color) setTextColor(res.changes.text_color);
+        if (res.changes.caption_preset) setCaptionPreset(res.changes.caption_preset);
+        if (res.changes.caption_enabled !== undefined) setCaptionEnabled(res.changes.caption_enabled);
+        if (res.changes.position_y !== undefined) setPositionY(res.changes.position_y);
+        if (res.changes.framing) setFramingMode(res.changes.framing);
+        if (res.changes.audio_volume !== undefined) setAudioVolume(res.changes.audio_volume);
+      }
+
+      if (res.clip) {
+        setSelectedClip(res.clip);
+      }
+
+      const aiMsg: ChatMessage = {
+        id: `ai_${Date.now()}`,
+        sender: 'assistant',
+        text: res.reply,
+        timestamp: new Date(),
+        actions: res.actions
+      };
+
+      setChatMessages(prev => [...prev, aiMsg]);
+      onRefresh();
+    } catch (err: any) {
+      const errorMsg: ChatMessage = {
+        id: `err_${Date.now()}`,
+        sender: 'assistant',
+        text: `Sorry, I couldn't complete that command: ${err.message || 'Unknown error'}`,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsCopilotThinking(false);
+    }
+  };
 
   useEffect(() => {
     // Select initial clip or first available clip
@@ -273,8 +353,16 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
   };
 
   const formatCaptionText = () => {
-    const raw = selectedClip?.hook_summary || selectedClip?.title || "HOW TO GROW RAPIDLY IN 2026";
+    let raw = selectedClip?.hook_summary || selectedClip?.title || "HOW TO GROW RAPIDLY IN 2026";
+    const excludedList: string[] = selectedClip?.edit_config?.excluded_phrases || [];
+    for (const phrase of excludedList) {
+      if (phrase && raw.toLowerCase().includes(phrase.toLowerCase())) {
+        const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        raw = raw.replace(new RegExp(escaped, 'gi'), '').trim();
+      }
+    }
     const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return null;
     if (words.length <= 4) {
       return (
         <>
@@ -627,6 +715,190 @@ export const ClipEditorPage: React.FC<ClipEditorPageProps> = ({
 
           {/* Right Column: Controls, Framing, & Subtitle Customizer (7 cols) */}
           <div className="lg:col-span-7 space-y-5">
+            {/* AI Editor Copilot Chat Section */}
+            <div className="bg-gradient-to-br from-surface to-surface-lighter rounded-2xl p-5 border border-brand-500/30 space-y-4 shadow-xl shadow-brand-500/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-600 to-accent-purple flex items-center justify-center text-white shadow-md">
+                    <Sparkles className="w-4 h-4 text-accent-amber" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      AI Editor Copilot
+                      <span className="text-[10px] font-semibold text-brand-300 bg-brand-500/15 border border-brand-500/30 px-2 py-0.5 rounded-full">Natural Language</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400">Instruct AI to remove on-screen text, words, or adjust styling and framing</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChatMessages([{
+                    id: 'init_reset',
+                    sender: 'assistant',
+                    text: "Chat cleared. What else would you like to remove or customize on this clip?",
+                    timestamp: new Date()
+                  }])}
+                  className="text-gray-500 hover:text-gray-300 text-[10px] p-1.5 rounded-lg hover:bg-surface-border transition-colors"
+                  title="Clear chat history"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Chat Message Stream */}
+              <div className="space-y-2 max-h-[170px] overflow-y-auto pr-1 text-xs scrollbar-thin">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {msg.sender === 'assistant' && (
+                      <div className="w-5 h-5 rounded-full bg-brand-600/30 border border-brand-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                        <Bot className="w-3 h-3 text-brand-400" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3.5 py-2 leading-relaxed ${
+                        msg.sender === 'user'
+                          ? 'bg-brand-600 text-white rounded-br-sm'
+                          : 'bg-surface border border-surface-border text-gray-200 rounded-bl-sm shadow'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isCopilotThinking && (
+                  <div className="flex gap-2 items-center text-xs text-brand-400">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="text-[11px]">AI Copilot is modifying clip settings...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Excluded Phrases Badges */}
+              {selectedClip.edit_config?.excluded_phrases && selectedClip.edit_config.excluded_phrases.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-red-950/25 border border-red-500/20 rounded-xl">
+                  <span className="text-[10px] font-semibold text-red-400 flex items-center gap-1 shrink-0">
+                    <Scissors className="w-3 h-3" />
+                    Excluded Caption Text:
+                  </span>
+                  {selectedClip.edit_config.excluded_phrases.map((phrase: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-red-200 text-[11px] font-medium"
+                    >
+                      <span>"{phrase}"</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSendCopilotCommand(`Restore phrase "${phrase}"`)}
+                        className="hover:text-white transition-colors ml-0.5 font-bold"
+                        title={`Restore "${phrase}"`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleSendCopilotCommand("Clear all excluded phrases")}
+                    className="text-[10px] text-gray-400 hover:text-white underline ml-auto transition-colors"
+                  >
+                    Restore All
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Prompt Suggestions */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setCopilotInput("I don't want the text on the screen which is ")}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-border border border-surface-border text-[11px] text-gray-300 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <Scissors className="w-3 h-3 text-red-400" />
+                  <span>Remove phrase...</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendCopilotCommand("Change highlight color to yellow")}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-border border border-surface-border text-[11px] text-gray-300 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                  <span>Yellow Highlight</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendCopilotCommand("Make font size bigger")}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-border border border-surface-border text-[11px] text-gray-300 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <Type className="w-3 h-3 text-brand-400" />
+                  <span>Bigger Font</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendCopilotCommand("Switch framing to AI face tracking")}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-border border border-surface-border text-[11px] text-gray-300 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <Zap className="w-3 h-3 text-accent-emerald" />
+                  <span>Auto-Face</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendCopilotCommand("Move captions to bottom")}
+                  className="px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-border border border-surface-border text-[11px] text-gray-300 hover:text-white flex items-center gap-1 transition-colors"
+                >
+                  <span>Bottom Position</span>
+                </button>
+              </div>
+
+              {/* Chat Input Bar */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendCopilotCommand();
+                }}
+                className="flex items-center gap-2 pt-1"
+              >
+                <input
+                  type="text"
+                  placeholder="e.g. I don't want the text which is 'vagera nikalta hai' / make font yellow..."
+                  value={copilotInput}
+                  onChange={(e) => setCopilotInput(e.target.value)}
+                  disabled={isCopilotThinking}
+                  className="flex-1 bg-surface-lighter border border-surface-border focus:border-brand-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 outline-none transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={!copilotInput.trim() || isCopilotThinking}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-accent-purple hover:opacity-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/20 disabled:opacity-50 transition-all shrink-0"
+                >
+                  {isCopilotThinking ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5" />
+                  )}
+                  <span>Apply</span>
+                </button>
+              </form>
+
+              {/* Active Excluded Phrases List */}
+              {selectedClip?.edit_config?.excluded_phrases && selectedClip.edit_config.excluded_phrases.length > 0 && (
+                <div className="pt-2 border-t border-surface-border flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold">Excluded Text:</span>
+                  {selectedClip.edit_config.excluded_phrases.map((phrase: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] bg-red-500/10 border border-red-500/30 text-red-300 px-2 py-0.5 rounded-full flex items-center gap-1 font-mono"
+                    >
+                      <Scissors className="w-2.5 h-2.5" />
+                      "{phrase}"
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 1. Timeline & Boundary Trimming */}
             <div className="bg-surface rounded-xl p-5 border border-surface-border space-y-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
